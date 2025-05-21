@@ -14,6 +14,6 @@ jobs:
         run: rye config --set-bool behavior.use-uv=true
       - name: Install dependencies
         run: |
-          rye sync
+          pip install .[test]
       - name: Run pytest
-        run: rye run pytest tests
+        run: pytest tests
