@@ -55,8 +55,8 @@ class MLP(Module):
 
 def create_mlp(
     dim,
-    *,
     depth,
+    *,
     dim_in = None,
     dim_out = None,
     **mlp_kwargs

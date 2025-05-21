@@ -1,6 +1,6 @@
 [project]
 name = "x-mlps"
-version = "0.0.4"
+version = "0.0.5"
 description = "A collection of MLPs / Feedforwards"
 authors = [
     { name = "Phil Wang", email = "lucidrains@gmail.com" }
