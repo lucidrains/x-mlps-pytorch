@@ -35,10 +35,14 @@ Repository = "https://github.com/lucidrains/x-mlps"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.rye]
-managed = true
-dev-dependencies = [
-    "pytest>=8.2.0",
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
 ]
 
 [tool.hatch.metadata]

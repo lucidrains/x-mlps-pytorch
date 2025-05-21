@@ -2,19 +2,46 @@ import torch
 from torch import nn
 from torch.nn import Module, ModuleList
 
-from einops import einsum, rearrange
-
-# helper functions
-
-def exists(v):
-    return v is not None
-
-def default(v, d):
-    return v if exists(v) else d
-
 # main class
 
 class MLP(Module):
-    def __init__(self):
+    def __init__(
+        self,
+        *dims,
+        activation = nn.ReLU(),
+        bias = True
+    ):
         super().__init__()
-        raise NotImplementedError
+        assert len(dims) > 1, f'must have more than 1 layer'
+
+        layers = []
+
+        # input output dimension pairs
+
+        dim_in_out = tuple(zip(dims[:-1], dims[1:]))
+
+        # layers
+
+        for i, (dim_in, dim_out) in enumerate(dim_in_out, start = 1):
+            is_last = i == len(dim_in_out)
+
+            layer = nn.Linear(dim_in, dim_out, bias = bias)
+
+            # if not last, add an activation after each linear layer
+
+            if not is_last:
+                layer = nn.Sequential(layer, activation)
+
+            layers.append(layer)
+
+        self.layers = ModuleList(layers)
+
+    def forward(
+        self,
+        x
+    ):
+
+        for layer in self.layers:
+            x = layer(x)
+
+        return x
