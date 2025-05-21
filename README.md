@@ -19,7 +19,7 @@ from x_mlps import MLP
 
 actor = MLP(10, 16, 5)
 
-critic = MLP(10, 1)
+critic = MLP(10, 32, 16, 1)
 
 state = torch.randn(10)
 
