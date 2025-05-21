@@ -1,3 +1,3 @@
-from x_mlps.x_mlps import (
+from x_mlps.mlp import (
     MLP
 )

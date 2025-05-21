@@ -2,6 +2,11 @@ import torch
 from torch import nn
 from torch.nn import Module, ModuleList
 
+# functions
+
+def exists(v):
+    return v is not None
+
 # main class
 
 class MLP(Module):
@@ -45,3 +50,24 @@ class MLP(Module):
             x = layer(x)
 
         return x
+
+# factory function
+
+def create_mlp(
+    dim,
+    *,
+    depth,
+    dim_in = None,
+    dim_out = None,
+    **mlp_kwargs
+):
+    dims = (dim,) * depth
+
+    if exists(dim_in):
+        dims = (dim_in, *dims)
+
+    if exists(dim_out):
+        dims = (*dims, dim_out)
+
+    return MLP(*dims, **mlp_kwargs)
+
