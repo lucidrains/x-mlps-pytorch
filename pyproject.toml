@@ -1,5 +1,5 @@
 [project]
-name = "x-mlps"
+name = "x-mlps-pytorch"
 version = "0.0.7"
 description = "A collection of MLPs / Feedforwards"
 authors = [

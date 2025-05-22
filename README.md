@@ -8,7 +8,7 @@ Will also be the repository I use for testing out [Jules](https://jules.google.c
 ## Install
 
 ```bash
-$ pip install x-mlps
+$ pip install x-mlps-pytorch
 ```
 
 ## Usage

@@ -2,7 +2,7 @@ import pytest
 import torch
 
 def test_mlp():
-    from x_mlps.mlp import MLP
+    from x_mlps_pytorch.mlp import MLP
 
     mlp = MLP(256, 128, 64)
 
@@ -13,7 +13,7 @@ def test_mlp():
 # with depth
 
 def test_create_mlp():
-    from x_mlps.mlp import create_mlp
+    from x_mlps_pytorch.mlp import create_mlp
 
     mlp = create_mlp(
         dim = 128,

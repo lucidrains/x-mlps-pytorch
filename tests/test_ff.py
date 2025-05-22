@@ -2,7 +2,7 @@ import pytest
 import torch
 
 def test_ff():
-    from x_mlps.ff import Feedforwards
+    from x_mlps_pytorch.ff import Feedforwards
 
     mlp = Feedforwards(256, 4)
 
