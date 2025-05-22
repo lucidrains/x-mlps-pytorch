@@ -1,6 +1,6 @@
-## x-mlps
+## x-mlps-pytorch
 
-Just a repository that will house MLPs, from garden variety to the exotic, so as to avoid having to reimplement them again and again for different projects (especially RL)
+Just a repository that will house MLPs for Pytorch, from garden variety to the exotic, so as to avoid having to reimplement them again and again for different projects (especially RL)
 
 Will also be the repository I use for testing out [Jules](https://jules.google.com/) and other AI assisted tools.
 
@@ -15,7 +15,7 @@ $ pip install x-mlps-pytorch
 
 ```python
 import torch
-from x_mlps import MLP
+from x_mlps_pytorch import MLP
 
 actor = MLP(10, 16, 5)
 
