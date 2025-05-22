@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://pypi.org/project/x-mlps/"
+Homepage = "https://pypi.org/project/x-mlps-pytorch/"
 Repository = "https://github.com/lucidrains/x-mlps"
 
 [build-system]
