@@ -40,6 +40,28 @@ class NeLU(Module):
         α = self.alpha
         return -α / (1. + x.square())
 
+class StraightThrough(Module):
+    def __init__(
+        self,
+        forward_fn: Module,
+        backward_fn: Module
+    ):
+        super().__init__()
+        self.forward_fn = forward_fn
+        self.backward_fn = backward_fn
+
+    def forward(self, x):
+        hard = self.forward_fn(x)
+
+        if not x.requires_grad:
+            return hard
+
+        soft = self.backward_fn(x)
+
+        # straight-through during training
+
+        return soft + (hard - soft).detach()
+
 class Sugar(Module):
     def __init__(
         self,
@@ -53,7 +75,7 @@ class Sugar(Module):
     def forward(self, x):
         forward_out = self.forward_fn(x)
 
-        if not self.training:
+        if not x.requires_grad:
             return forward_out
 
         backward_out = self.backward_fn(x)
