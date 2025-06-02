@@ -27,3 +27,36 @@ action_logits = actor(state) # (5,)
 
 values = critic(state) # (1,)
 ```
+
+## Citations
+
+```bibtex
+@article{So2021PrimerSF,
+    title   = {Primer: Searching for Efficient Transformers for Language Modeling},
+    author  = {David R. So and Wojciech Ma'nke and Hanxiao Liu and Zihang Dai and Noam M. Shazeer and Quoc V. Le},
+    journal = {ArXiv},
+    year    = {2021},
+    volume  = {abs/2109.08668},
+    url     = {https://api.semanticscholar.org/CorpusID:237563187}
+}
+```
+
+```bibtex
+@article{Zhang2024ReLU2WD,
+    title   = {ReLU2 Wins: Discovering Efficient Activation Functions for Sparse LLMs},
+    author  = {Zhengyan Zhang and Yixin Song and Guanghui Yu and Xu Han and Yankai Lin and Chaojun Xiao and Chenyang Song and Zhiyuan Liu and Zeyu Mi and Maosong Sun},
+    journal = {ArXiv},
+    year    = {2024},
+    volume  = {abs/2402.03804},
+    url     = {https://api.semanticscholar.org/CorpusID:267499856}
+}
+```
+
+```bibtex
+@inproceedings{Horuz2025TheRO,
+    title   = {The Resurrection of the ReLU},
+    author  = {Cocsku Can Horuz and Geoffrey Kasenbacher and Saya Higuchi and Sebastian Kairat and Jendrik Stoltz and Moritz Pesl and Bernhard A. Moser and Christoph Linse and Thomas Martinetz and Sebastian Otte},
+    year    = {2025},
+    url     = {https://api.semanticscholar.org/CorpusID:278959515}
+}
+```
