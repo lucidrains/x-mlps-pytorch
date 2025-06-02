@@ -1,7 +1,7 @@
 from functools import partial
 
 import torch
-from torch.nn import Module
+from torch.nn import Module, ReLU
 
 # relu squared with optional signing
 
@@ -87,3 +87,8 @@ class Sugar(Module):
         # straight-through during training
 
         return soft + (forward_out - soft).detach()
+
+# the one that beat gelu in transformer setting for me
+
+def ReluNelu(alpha = 0.05):
+    return Sugar(ReLU(), NeLU(alpha))
