@@ -14,7 +14,8 @@ class MLP(Module):
         self,
         *dims,
         activation = nn.ReLU(),
-        bias = True
+        bias = True,
+        activate_last = False
     ):
         super().__init__()
         assert len(dims) > 1, f'must have more than 1 layer'
@@ -34,7 +35,7 @@ class MLP(Module):
 
             # if not last, add an activation after each linear layer
 
-            if not is_last:
+            if not is_last or activate_last:
                 layer = nn.Sequential(layer, activation)
 
             layers.append(layer)
