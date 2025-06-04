@@ -4,8 +4,8 @@ import torch
 def test_ff():
     from x_mlps_pytorch.ff import Feedforwards
 
-    mlp = Feedforwards(256, 4)
+    mlp = Feedforwards(256, 4, dim_in = 128, dim_out = 128)
 
-    x = torch.randn(7, 3, 256)
+    x = torch.randn(7, 3, 128)
 
     assert mlp(x).shape == x.shape
