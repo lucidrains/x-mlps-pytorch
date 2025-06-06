@@ -25,6 +25,15 @@ def cast_tuple(t, length = 1):
 def l2norm(t, dim = -1):
     return F.normalize(t, dim = dim)
 
+# norming of the weights
+
+def norm_weights_(parent_module: Module):
+    for module in parent_module.modules():
+        if not isinstance(module, NormLinear):
+            continue
+
+        module.norm_weights_()
+
 # scale
 
 class Scale(Module):
@@ -274,11 +283,7 @@ class nFeedforwards(Module):
 
     @torch.no_grad()
     def norm_weights_(self):
-        for module in self.modules():
-            if not isinstance(module, NormLinear):
-                continue
-
-            module.norm_weights_()
+        norm_weights_(self)
 
     def forward(
         self,

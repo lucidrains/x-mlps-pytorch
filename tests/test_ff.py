@@ -14,10 +14,12 @@ def test_ff():
 def test_nff(
     preserve_magnitude
 ):
-    from x_mlps_pytorch.nff import nFeedforwards
+    from x_mlps_pytorch.nff import nFeedforwards, norm_weights_
 
     mlp = nFeedforwards(256, 4, preserve_magnitude = preserve_magnitude)
 
     x = torch.randn(7, 3, 256)
 
     assert mlp(x).shape == x.shape
+
+    norm_weights_(mlp)
