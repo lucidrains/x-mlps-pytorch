@@ -60,3 +60,25 @@ values = critic(state) # (1,)
     url     = {https://api.semanticscholar.org/CorpusID:278959515}
 }
 ```
+
+```bibtex
+@article{Loshchilov2024nGPTNT,
+    title   = {nGPT: Normalized Transformer with Representation Learning on the Hypersphere},
+    author  = {Ilya Loshchilov and Cheng-Ping Hsieh and Simeng Sun and Boris Ginsburg},
+    journal = {ArXiv},
+    year    = {2024},
+    volume  = {abs/2410.01131},
+    url     = {https://api.semanticscholar.org/CorpusID:273026160}
+}
+```
+
+```bibtex
+@article{Lee2025HypersphericalNF,
+    title   = {Hyperspherical Normalization for Scalable Deep Reinforcement Learning},
+    author  = {Hojoon Lee and Youngdo Lee and Takuma Seno and Donghu Kim and Peter Stone and Jaegul Choo},
+    journal = {ArXiv},
+    year    = {2025},
+    volume  = {abs/2502.15280},
+    url     = {https://api.semanticscholar.org/CorpusID:276558261}
+}
+```

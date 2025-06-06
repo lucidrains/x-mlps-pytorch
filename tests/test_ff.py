@@ -9,3 +9,12 @@ def test_ff():
     x = torch.randn(7, 3, 128)
 
     assert mlp(x).shape == x.shape
+
+def test_nff():
+    from x_mlps_pytorch.nff import nFeedforwards
+
+    mlp = nFeedforwards(256, 4)
+
+    x = torch.randn(7, 3, 256)
+
+    assert mlp(x).shape == x.shape
