@@ -188,7 +188,7 @@ class nFeedforwards(Module):
         dim_in = None,
         dim_out = None,
         ff_expand_factor = 4.,
-        preserve_magnitude = False,
+        input_preserve_magnitude = False,
         constant_shift = 3., # simbav2 concatted a constant of 3. before l2norm of the input to preserve magnitude information
         manual_norm_weights = False,
         # below are all the scale related hyperparameters, for controlling effective relative learning rates throughout the network
@@ -259,16 +259,16 @@ class nFeedforwards(Module):
 
         # appending the magnitude
 
-        self.preserve_magnitude = preserve_magnitude
+        self.input_preserve_magnitude = input_preserve_magnitude
         self.constant_shift = constant_shift
 
         # projecting in
 
-        self.need_proj_in = exists(dim_in) or preserve_magnitude
+        self.need_proj_in = exists(dim_in) or input_preserve_magnitude
 
         if self.need_proj_in:
             dim_in = default(dim_in, dim)
-            dim_constant_shift = int(preserve_magnitude)
+            dim_constant_shift = int(input_preserve_magnitude)
 
             self.proj_in = NormLinear(dim_in + dim_constant_shift, dim, norm_dim_in = False)
             self.proj_in_scale = Scale(dim)
@@ -290,7 +290,7 @@ class nFeedforwards(Module):
         x        
     ):
 
-        if self.preserve_magnitude:
+        if self.input_preserve_magnitude:
             x = F.pad(x, (0, 1), value = self.constant_shift)
             x = l2norm(x)
 

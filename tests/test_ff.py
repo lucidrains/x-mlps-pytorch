@@ -16,7 +16,7 @@ def test_nff(
 ):
     from x_mlps_pytorch.nff import nFeedforwards, norm_weights_
 
-    mlp = nFeedforwards(256, 4, preserve_magnitude = preserve_magnitude)
+    mlp = nFeedforwards(256, 4, input_preserve_magnitude = preserve_magnitude)
 
     x = torch.randn(7, 3, 256)
 
