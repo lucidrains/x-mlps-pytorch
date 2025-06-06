@@ -10,10 +10,13 @@ def test_ff():
 
     assert mlp(x).shape == x.shape
 
-def test_nff():
+@pytest.mark.parametrize('preserve_magnitude', (False, True))
+def test_nff(
+    preserve_magnitude
+):
     from x_mlps_pytorch.nff import nFeedforwards
 
-    mlp = nFeedforwards(256, 4)
+    mlp = nFeedforwards(256, 4, preserve_magnitude = preserve_magnitude)
 
     x = torch.randn(7, 3, 256)
 

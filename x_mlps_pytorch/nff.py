@@ -176,12 +176,14 @@ class nFeedforwards(Module):
         dim,
         depth,
         *,
+        dim_in = None,
+        dim_out = None,
         ff_expand_factor = 4.,
+        preserve_magnitude = False,
+        constant_shift = 3., # simbav2 concatted a constant of 3. before l2norm of the input to preserve magnitude information
         manual_norm_weights = False,
         # below are all the scale related hyperparameters, for controlling effective relative learning rates throughout the network
-        alpha_init: float | None = None,  # this would set the alpha init for all residuals, but would be overridden by alpha_attn_init and alpha_ff_init if they are specified
-        s_logit_init: float  = 1.,
-        s_logit_scale: float | None = None,
+        alpha_init: float | None = None,  # this would set the alpha init for all residuals, but would be overridden by alpha_ff_init if they are specified
         alpha_attn_init: float | tuple[float, ...] | None = None,
         alpha_attn_scale: float | tuple[float, ...] | None = None,
         alpha_ff_init: float | tuple[float, ...] | None = None,
@@ -190,6 +192,7 @@ class nFeedforwards(Module):
         s_ff_hidden_scale: float | tuple[float, ...] = 1.,
         s_ff_gate_init: float | tuple[float, ...] = 1.,
         s_ff_gate_scale: float | tuple[float, ...] = 1.,
+
     ):
         super().__init__()
         NormLinear_ = partial(NormLinear, parametrize = not manual_norm_weights)
@@ -245,6 +248,30 @@ class nFeedforwards(Module):
 
             self.layers.append(ff_with_residual)
 
+        # appending the magnitude
+
+        self.preserve_magnitude = preserve_magnitude
+        self.constant_shift = constant_shift
+
+        # projecting in
+
+        self.need_proj_in = exists(dim_in) or preserve_magnitude
+
+        if self.need_proj_in:
+            dim_in = default(dim_in, dim)
+            dim_constant_shift = int(preserve_magnitude)
+
+            self.proj_in = NormLinear(dim_in + dim_constant_shift, dim, norm_dim_in = False)
+            self.proj_in_scale = Scale(dim)
+
+        # projecting out
+
+        self.need_proj_out = exists(dim_out)
+
+        if self.need_proj_out:
+            self.proj_out = NormLinear_(dim, dim_out)
+            self.proj_out_scale = Scale(dim_out, 1., dim ** -0.5)
+
     @torch.no_grad()
     def norm_weights_(self):
         for module in self.modules():
@@ -258,8 +285,19 @@ class nFeedforwards(Module):
         x        
     ):
 
+        if self.preserve_magnitude:
+            x = F.pad(x, (0, 1), value = self.constant_shift)
+            x = l2norm(x)
+
+        if self.need_proj_in:
+            x = self.proj_in(x) * self.proj_in_scale()
+            x = l2norm(x)
+
         for ff in self.layers:
             x = ff(x)
+
+        if self.need_proj_out:
+            x = self.proj_out(x) * self.proj_out_scale()
 
         return x
 
@@ -267,7 +305,7 @@ class nFeedforwards(Module):
 
 if __name__ == '__main__':
 
-    nff = nFeedforwards(dim = 512, depth = 4)
-    x = torch.randn((2, 512))
+    nff = nFeedforwards(512, 4, dim_in = 128, dim_out = 128, preserve_magnitude = True)
+    x = torch.randn((2, 128))
 
     assert nff(x).shape == x.shape
