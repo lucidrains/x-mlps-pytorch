@@ -71,4 +71,3 @@ def create_mlp(
         dims = (*dims, dim_out)
 
     return MLP(*dims, **mlp_kwargs)
-
