@@ -9,10 +9,15 @@ import torch.nn.functional as F
 from torch.nn import Module, ModuleList
 from torch.nn.utils.parametrize import register_parametrization
 
+from einops import pack, unpack, rearrange, repeat
+
 # functions
 
 def exists(v):
     return v is not None
+
+def first(arr):
+    return arr[0]
 
 def default(v, d):
     return v if exists(v) else d
@@ -22,8 +27,16 @@ def cast_tuple(t, length = 1):
     assert len(out) == length
     return out
 
-def l2norm(t, dim = -1):
+def l2norm(t, dim = 1):
     return F.normalize(t, dim = dim)
+
+def pack_with_inverse(t, pattern):
+    packed, shape = pack([t], pattern)
+
+    def inverse(out):
+        return first(unpack(out, shape, pattern))
+
+    return packed, inverse
 
 # norming of the weights
 
@@ -41,11 +54,11 @@ class Scale(Module):
         self,
         dim,
         init = 1.,
-        scale = 1.
+        scale = 1.,
+        groups = 1
     ):
         super().__init__()
-        self.dim = dim
-        self.scale = nn.Parameter(torch.ones(dim) * scale)
+        self.scale = nn.Parameter(torch.ones(dim * groups, 1) * scale)
         self.forward_scale = init / scale
 
     def forward(self):
@@ -60,10 +73,11 @@ class Residual(Module):
         dim: int,
         init: float,
         scale: float | None = None,
+        groups = 1
     ):
         super().__init__()
         self.fn = fn
-        self.branch_scale = Scale(dim, init, default(scale, dim ** -0.5))
+        self.branch_scale = Scale(dim, init, default(scale, dim ** -0.5), groups = groups)
 
     def forward(self, x, **kwargs):
         residual = x
@@ -86,18 +100,36 @@ class Residual(Module):
 # for use with parametrize
 
 class L2Norm(Module):
-    def __init__(self, dim = -1):
+    def __init__(
+        self,
+        norm_dim_in = True,
+        groups = 1
+    ):
         super().__init__()
-        self.dim = dim        
+        self.groups = groups
+        self.norm_dim_in = norm_dim_in
 
-    def forward(self, t):
-        return l2norm(t, dim = self.dim)
+    def forward(self, weight):
+        g = self.groups
+        assert weight.ndim == 3
+
+        if self.norm_dim_in:
+            weight = rearrange(weight, 'o (g i) k -> o g i k', g = g)
+            weight = l2norm(weight, dim = -1)
+            weight = rearrange(weight, 'o g i k -> o (g i) k')
+        else:
+            weight = rearrange(weight, '(g o) i k -> g o i k', g = g)
+            weight = l2norm(weight, dim = -1)
+            weight = rearrange(weight, 'g o i k -> (g o) i k')
+
+        return weight
 
 class NormLinear(Module):
     def __init__(
         self,
         dim,
         dim_out,
+        groups = 1,
         norm_dim_in = True,
         parametrize = True
     ):
@@ -105,10 +137,10 @@ class NormLinear(Module):
         self.dim = dim
         self.dim_out = dim_out
 
-        self.linear = nn.Linear(dim, dim_out, bias = False)
+        self.linear = nn.Conv1d(dim * groups, dim_out * groups, 1, groups = groups, bias = False)
 
         self.parametrize = parametrize
-        self.l2norm = L2Norm(dim = -1 if norm_dim_in else 0)
+        self.l2norm = L2Norm(norm_dim_in)
 
         if parametrize:
             register_parametrization(
@@ -143,6 +175,7 @@ class nFeedforward(Module):
         self,
         dim,
         *,
+        groups = 1,
         expand_factor = 4,
         manual_norm_weights = False,
         s_hidden_init = 1.,
@@ -160,13 +193,13 @@ class nFeedforward(Module):
 
         self.dim_inner = dim_inner
 
-        self.to_hidden = NormLinear_(dim, dim_inner)
-        self.to_gate = NormLinear_(dim, dim_inner)
+        self.to_hidden = NormLinear_(dim, dim_inner, groups = groups)
+        self.to_gate = NormLinear_(dim, dim_inner, groups = groups)
 
-        self.hidden_scale = Scale(dim_inner, s_hidden_init, s_hidden_scale)
-        self.gate_scale = Scale(dim_inner, s_gate_init, s_gate_scale)
+        self.hidden_scale = Scale(dim_inner, s_hidden_init, s_hidden_scale, groups = groups)
+        self.gate_scale = Scale(dim_inner, s_gate_init, s_gate_scale, groups = groups)
 
-        self.to_out = NormLinear_(dim_inner, dim, norm_dim_in = False)
+        self.to_out = NormLinear_(dim_inner, dim, groups = groups, norm_dim_in = False)
 
     def forward(self, x):
         hidden, gate = self.to_hidden(x), self.to_gate(x)
@@ -179,12 +212,14 @@ class nFeedforward(Module):
 
 # classes
 
-class nFeedforwards(Module):
+class nGroupedFeedforwards(Module):
     def __init__(
         self,
         dim,
         depth,
         *,
+        groups = 1,
+        squeeze_if_one_group = False,
         dim_in = None,
         dim_out = None,
         ff_expand_factor = 4.,
@@ -205,6 +240,9 @@ class nFeedforwards(Module):
     ):
         super().__init__()
         NormLinear_ = partial(NormLinear, parametrize = not manual_norm_weights)
+
+        self.groups = groups
+        self.squeeze_if_one_group = groups == 1 and squeeze_if_one_group
 
         self.dim = dim
         self.depth = depth
@@ -240,6 +278,7 @@ class nFeedforwards(Module):
 
             ff = nFeedforward(
                 dim,
+                groups = groups,
                 expand_factor = ff_expand_factor,
                 manual_norm_weights = manual_norm_weights,
                 s_hidden_init = s_ff_hidden_init_,
@@ -252,7 +291,8 @@ class nFeedforwards(Module):
                 ff,
                 dim,
                 default(alpha_ff_init_, alpha_init),
-                default(alpha_ff_scale_, dim ** -0.5)
+                default(alpha_ff_scale_, dim ** -0.5),
+                groups = groups
             )
 
             self.layers.append(ff_with_residual)
@@ -270,16 +310,16 @@ class nFeedforwards(Module):
             dim_in = default(dim_in, dim)
             dim_constant_shift = int(input_preserve_magnitude)
 
-            self.proj_in = NormLinear(dim_in + dim_constant_shift, dim, norm_dim_in = False)
-            self.proj_in_scale = Scale(dim)
+            self.proj_in = NormLinear(dim_in + dim_constant_shift, dim, groups = groups, norm_dim_in = False)
+            self.proj_in_scale = Scale(dim, groups = groups)
 
         # projecting out
 
         self.need_proj_out = exists(dim_out)
 
         if self.need_proj_out:
-            self.proj_out = NormLinear_(dim, dim_out)
-            self.proj_out_scale = Scale(dim_out, 1., dim ** -0.5)
+            self.proj_out = NormLinear_(dim, dim_out, groups = groups)
+            self.proj_out_scale = Scale(dim_out, 1., dim ** -0.5, groups = groups)
 
     @torch.no_grad()
     def norm_weights_(self):
@@ -290,9 +330,15 @@ class nFeedforwards(Module):
         x        
     ):
 
+        x, inverse_pack = pack_with_inverse(x, 'b * d')
+
         if self.input_preserve_magnitude:
             x = F.pad(x, (0, 1), value = self.constant_shift)
             x = l2norm(x)
+
+        x = rearrange(x, 'b n d -> b d n')
+
+        x = repeat(x, 'b d n -> b (g d) n', g = self.groups)
 
         if self.need_proj_in:
             x = self.proj_in(x) * self.proj_in_scale()
@@ -304,13 +350,22 @@ class nFeedforwards(Module):
         if self.need_proj_out:
             x = self.proj_out(x) * self.proj_out_scale()
 
-        return x
+        x = rearrange(x, 'b d n -> b n d')
+
+        x = inverse_pack(x)
+
+        x = rearrange(x, 'b ... (g d) -> b ... g d', g = self.groups)
+
+        if not self.squeeze_if_one_group:
+            return x
+
+        return rearrange(x, 'b ... 1 d -> b ... d')
 
 # copy-pasteable file
 
 if __name__ == '__main__':
 
-    nff = nFeedforwards(512, 4, dim_in = 128, dim_out = 128, input_preserve_magnitude = True)
+    nff = nGroupedFeedforwards(512, 4, dim_in = 128, dim_out = 128, input_preserve_magnitude = True, squeeze_if_one_group = True)
     x = torch.randn((2, 128))
 
     assert nff(x).shape == x.shape
