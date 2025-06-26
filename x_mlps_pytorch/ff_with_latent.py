@@ -112,6 +112,7 @@ class LatentConditionedFeedforwards(Module):
         dim_in = None,
         dim_out = None,
         dim_latent = None,
+        latent_mlp = False,
         activation = nn.GELU(),
         bias = True,
         expansion_factor = 4.,
@@ -123,7 +124,19 @@ class LatentConditionedFeedforwards(Module):
 
         dim_hidden = int(dim * expansion_factor)
 
-        dim_latent = default(dim_latent, dim)
+        dim_cond = default(dim_latent, dim)
+
+        # whether to take care of a latent mlp
+
+        self.to_latent_cond = nn.Identity()
+
+        if latent_mlp:
+            self.to_latent_cond = nn.Sequential(
+                Linear(dim_latent, dim * 2),
+                nn.SiLU(),
+            )
+
+            dim_cond = dim * 2
 
         # layers
 
@@ -138,7 +151,7 @@ class LatentConditionedFeedforwards(Module):
             layer = AdaNormConfig(
                 layer,
                 dim = dim,
-                dim_cond = dim_latent
+                dim_cond = dim_cond
             )
 
             layers.append(layer)
@@ -162,8 +175,10 @@ class LatentConditionedFeedforwards(Module):
 
         x = self.proj_in(x)
 
+        cond = self.to_latent_cond(latent)
+
         for layer in self.layers:
-            x = layer(x, cond = latent) + x
+            x = layer(x, cond = cond) + x
 
         x = self.norm(x)
 

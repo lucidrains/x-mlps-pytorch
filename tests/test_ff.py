@@ -25,12 +25,14 @@ def test_nff(
     norm_weights_(ff)
 
 @pytest.mark.parametrize('input_has_seq_dim', (False, True))
+@pytest.mark.parametrize('latent_mlp', (False, True))
 def test_ff_with_latent(
-    input_has_seq_dim
+    input_has_seq_dim,
+    latent_mlp
 ):
     from x_mlps_pytorch.ff_with_latent import LatentConditionedFeedforwards
 
-    ff = LatentConditionedFeedforwards(256, 4, dim_in = 128, dim_out = 128, dim_latent = 33)
+    ff = LatentConditionedFeedforwards(256, 4, dim_in = 128, dim_out = 128, dim_latent = 33, latent_mlp = latent_mlp)
 
     x = torch.randn(7, 3, 128) if input_has_seq_dim else torch.randn(7, 128)
     latent = torch.randn(7, 33)
