@@ -1,5 +1,6 @@
 from x_mlps_pytorch.mlp import (
-    MLP
+    MLP,
+    create_mlp
 )
 
 from x_mlps_pytorch.ff import (
