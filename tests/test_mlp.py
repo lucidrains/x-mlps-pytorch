@@ -27,3 +27,18 @@ def test_create_mlp():
     x = torch.randn(7, 3, 256)
 
     assert mlp(x).shape == (7, 3, 64)
+
+@pytest.mark.parametrize('latent_mlp', (False, True))
+@pytest.mark.parametrize('condition_hadamard_hiddens', (False, True))
+def test_latent_conditioned_mlp(
+    latent_mlp,
+    condition_hadamard_hiddens
+):
+    from x_mlps_pytorch.mlp_with_latent import create_mlp
+
+    mlp = create_mlp(256, 4, dim_in = 128, dim_out = 128, dim_latent = 33, latent_mlp = latent_mlp, condition_hiddens = condition_hadamard_hiddens)
+
+    x = torch.randn(7, 3, 128)
+    latent = torch.randn(7, 33)
+
+    assert mlp(x, latent = latent).shape == x.shape
