@@ -1,5 +1,6 @@
 import pytest
 import torch
+param = pytest.mark.parametrize
 
 def test_mlp():
     from x_mlps_pytorch.mlp import MLP
@@ -28,8 +29,8 @@ def test_create_mlp():
 
     assert mlp(x).shape == (7, 3, 64)
 
-@pytest.mark.parametrize('latent_mlp', (False, True))
-@pytest.mark.parametrize('condition_hadamard_hiddens', (False, True))
+@param('latent_mlp', (False, True))
+@param('condition_hadamard_hiddens', (False, True))
 def test_latent_conditioned_mlp(
     latent_mlp,
     condition_hadamard_hiddens
@@ -42,3 +43,15 @@ def test_latent_conditioned_mlp(
     latent = torch.randn(7, 33)
 
     assert mlp(x, latent = latent).shape == x.shape
+
+@param('rmsnorm', (False, True))
+def test_mlp_with_norms(
+    rmsnorm
+):
+    from x_mlps_pytorch.normed_mlp import MLP
+
+    mlp = MLP(256, 128, 64, use_rmsnorm = rmsnorm)
+
+    x = torch.randn(7, 3, 256)
+
+    assert mlp(x).shape == (7, 3, 64)
