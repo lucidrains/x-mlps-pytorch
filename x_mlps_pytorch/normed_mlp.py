@@ -1,3 +1,4 @@
+from __future__ import annotations
 from functools import partial
 
 import torch
@@ -17,6 +18,7 @@ class MLP(Module):
         *dims,
         activation = nn.ReLU(),
         bias = True,
+        norm_fn: Module | None = None,
         use_rmsnorm = False,
         final_norm = False,
         activate_last = False
@@ -34,7 +36,8 @@ class MLP(Module):
 
         # norm type
 
-        norm_fn = nn.RMSNorm if use_rmsnorm else partial(nn.LayerNorm, bias = False)
+        if not exists(norm_fn):
+            norm_fn = nn.RMSNorm if use_rmsnorm else partial(nn.LayerNorm, bias = False)
 
         *_, last_dim = dims
 
