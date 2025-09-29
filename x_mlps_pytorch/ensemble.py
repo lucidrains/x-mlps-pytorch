@@ -37,10 +37,10 @@ class Ensemble(Module):
         self.param_names = ensemble_params.keys()
         self.param_values = ParameterList(list(ensemble_params.values()))
 
-        def _forward(params, data):
-            return functional_call(net, params, data)
+        def _forward(params, args, kwargs):
+            return functional_call(net, params, args, kwargs)
 
-        self.ensemble_forward = vmap(_forward, in_dims = (0, None))
+        self.ensemble_forward = vmap(_forward, in_dims = (0, None, None))
 
     @property
     def ensemble_params(self):
@@ -102,10 +102,10 @@ class Ensemble(Module):
 
     def forward(
         self,
-        data,
-        *,
+        *args,
         ids = None,
+        **kwargs,
     ):
 
         params = self.pick_params(ids)
-        return self.ensemble_forward(dict(params), data)
+        return self.ensemble_forward(dict(params), args, kwargs)
