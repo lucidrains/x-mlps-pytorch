@@ -19,8 +19,13 @@ def test_critic():
     subset_ids = torch.tensor([0, 3, 5])
     assert critics(state, ids = subset_ids).shape == (3, 2, 1)
 
+    subset_ids = torch.tensor([0, 0])
+    assert critics(state, ids = subset_ids, each_batch_sample = True).shape == (2, 1)
+
     critic = critics.get_one(2)
     assert critic(state).shape == (2, 1)
+
+    assert critics.forward_one(state, id = 0).shape == (2, 1)
 
     critic = critics.get_one([2, 3], weights = [0.1, 0.2])
     assert critic(state).shape == (2, 1)

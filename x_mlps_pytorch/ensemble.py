@@ -40,7 +40,9 @@ class Ensemble(Module):
         def _forward(params, args, kwargs):
             return functional_call(net, params, args, kwargs)
 
+        self._forward = _forward
         self.ensemble_forward = vmap(_forward, in_dims = (0, None, None))
+        self.each_batch_sample_forward = vmap(_forward, in_dims = (0, 0, 0))
 
     @property
     def ensemble_params(self):
@@ -100,12 +102,25 @@ class Ensemble(Module):
 
         return out
 
+    def forward_one(
+        self,
+        *args,
+        id: int,
+        **kwargs
+    ):
+        params = {key: param[id] for key, param in self.ensemble_params.items()}
+        return self._forward(dict(params), args, kwargs)
+
     def forward(
         self,
         *args,
         ids = None,
+        each_batch_sample = False,
         **kwargs,
     ):
 
         params = self.pick_params(ids)
-        return self.ensemble_forward(dict(params), args, kwargs)
+
+        fn = self.ensemble_forward if not each_batch_sample else self.each_batch_sample_forward
+
+        return fn(dict(params), args, kwargs)
