@@ -34,7 +34,7 @@ class Ensemble(Module):
 
         ensemble_params = {name: (torch.randn((ensemble_size, *param.shape), device = device) * init_std_dev).requires_grad_() for name, param in params.items()}
 
-        self.param_names = ensemble_params.keys()
+        self.param_names = list(ensemble_params.keys())
         self.param_values = ParameterList(list(ensemble_params.values()))
 
         def _forward(params, args, kwargs):
