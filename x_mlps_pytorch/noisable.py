@@ -69,14 +69,16 @@ class Noisable(Module):
 
     def add_noise_(
         self,
-        noise_for_params = dict()
+        noise_for_params = dict(),
+        noise_scale = None
     ):
         self.get_noised_params(noise_for_params, inplace = True)
 
     def get_noised_params(
         self,
         noise_for_params = dict(),
-        inplace = False
+        inplace = False,
+        noise_scale = None
     ):
         # get named params
 
@@ -95,7 +97,7 @@ class Noisable(Module):
             param_shape = param.shape
 
             noise_or_seed = noise_for_params.get(name, None)
-            noise_scale = self.noise_scale
+            noise_scale = default(noise_scale, self.noise_scale)
 
             if not exists(noise_or_seed):
                 continue
@@ -131,7 +133,7 @@ class Noisable(Module):
             if inplace:
                 param.data.add_(noise)
             else:
-                noised_params[name] = param + noise.to(self.device)
+                noised_params[name] = param + noise
 
         return return_params
 
@@ -139,12 +141,13 @@ class Noisable(Module):
         self,
         *args,
         noise_for_params = dict(),
+        noise_scale = None,
         **kwargs
     ):
         if is_empty(noise_for_params):
             return self.model(*args, **kwargs)
 
-        noised_params = self.get_noised_params(noise_for_params)
+        noised_params = self.get_noised_params(noise_for_params, noise_scale = noise_scale)
 
         # use functional call with noised params
 
