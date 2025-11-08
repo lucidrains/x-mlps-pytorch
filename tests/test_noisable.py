@@ -12,7 +12,7 @@ def test_noisable():
 
     linear = nn.Linear(32, 64)
 
-    noisable_linear = Noisable(linear)
+    noisable_linear = Noisable(linear, noise_scale = 1e-2)
 
     x = torch.randn(3, 32)
 

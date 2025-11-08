@@ -22,3 +22,8 @@ from x_mlps_pytorch.grouped_ff import (
 from x_mlps_pytorch.grouped_nff import (
     nGroupedFeedforwards
 )
+
+from x_mlps_pytorch.noisable import (
+    Noisable,
+    randn_from_seed
+)

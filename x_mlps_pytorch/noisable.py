@@ -54,12 +54,14 @@ def randn_from_seed(seed, shape, device = None):
 class Noisable(Module):
     def __init__(
         self,
-        model: Module
+        model: Module,
+        noise_scale = 1.
     ):
         super().__init__()
         assert not is_empty(list(model.parameters()))
 
         self.model = model
+        self.noise_scale = noise_scale
 
     @property
     def device(self):
@@ -84,17 +86,37 @@ class Noisable(Module):
 
         for name, param in named_params.items():
 
+            param_shape = param.shape
+
             noise_or_seed = noise_for_params.get(name, None)
+            noise_scale = self.noise_scale
 
             if not exists(noise_or_seed):
                 continue
 
+            # determine the noise
+
             if isinstance(noise_or_seed, int):
-                noise = randn_from_seed(noise_or_seed, param.shape)
+                noise = randn_from_seed(noise_or_seed, param_shape)
+
+            elif isinstance(noise_or_seed, tuple) and len(noise_or_seed) == 2:
+
+                # overriding noise scale per param
+
+                seed, noise_scale = noise_or_seed
+                noise = randn_from_seed(seed, param_shape)
+
             elif is_tensor(noise_or_seed):
                 noise = noise_or_seed
             else:
                 raise ValueError('invalid type, noise must be float tensor or int')
+
+            # scale the noise
+
+            if noise_scale != 1.:
+                noise.mul_(noise_scale)
+
+            # add to param
 
             noised_params[name] = param + noise.to(self.device)
 
