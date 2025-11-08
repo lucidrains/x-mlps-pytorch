@@ -38,3 +38,7 @@ def test_noisable():
     noised_out_again = noisable_linear(x, noise_for_params = dict(weight = seed))
 
     assert torch.allclose(noised_out, noised_out_again)
+
+    noisable_linear.add_noise_(dict(weight = (seed, 1e-4)))
+
+    assert not torch.allclose(out, noisable_linear(x))
