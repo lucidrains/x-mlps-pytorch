@@ -67,18 +67,32 @@ class Noisable(Module):
     def device(self):
         return next(self.model.parameters()).device
 
+    @contextmanager
+    def temp_add_noise_(
+        self,
+        noise_for_params = dict(),
+        noise_scale = None,
+    ):
+        self.get_noised_params(noise_for_params, inplace = True)
+
+        yield
+
+        self.get_noised_params(noise_for_params, inplace = True, negate = True)
+
     def add_noise_(
         self,
         noise_for_params = dict(),
-        noise_scale = None
+        noise_scale = None,
+        negate = False
     ):
-        self.get_noised_params(noise_for_params, inplace = True)
+        self.get_noised_params(noise_for_params, inplace = True, negate = negate)
 
     def get_noised_params(
         self,
         noise_for_params = dict(),
         inplace = False,
-        noise_scale = None
+        noise_scale = None,
+        negate = False
     ):
         # get named params
 
@@ -127,6 +141,9 @@ class Noisable(Module):
             # add to param
 
             noise = noise.to(self.device)
+
+            if negate:
+                noise.mul_(-1)
 
             # if inplace, add directly to param, else set the new dictionary and return that
 
