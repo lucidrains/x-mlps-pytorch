@@ -55,3 +55,16 @@ def test_mlp_with_norms(
     x = torch.randn(7, 3, 256)
 
     assert mlp(x).shape == (7, 3, 64)
+
+def test_mlp_list_tensor_input():
+    from x_mlps_pytorch.mlp import MLP
+
+    mlp = MLP(256, 128, 64)
+
+    x = [
+        torch.randn(7, 3, 128),
+        torch.randn(7, 3, 64),
+        torch.randn(7, 3, 64),
+    ]
+
+    assert mlp(x).shape == (7, 3, 64)

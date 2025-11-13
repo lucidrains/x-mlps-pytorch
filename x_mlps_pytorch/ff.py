@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+from torch import nn, cat
 from torch.nn import Module, ModuleList
 
 # functions
@@ -57,6 +57,9 @@ class Feedforwards(Module):
         self,
         x
     ):
+
+        if isinstance(x, (list, tuple)):
+            x = cat(x, dim = -1)
 
         x = self.proj_in(x)
 

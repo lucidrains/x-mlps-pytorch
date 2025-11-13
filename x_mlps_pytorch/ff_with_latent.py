@@ -2,7 +2,7 @@
 # https://web3.arxiv.org/abs/2503.19037
 
 import torch
-from torch import nn
+from torch import nn, cat
 import torch.nn.functional as F
 from torch.nn import Linear, Module, ModuleList
 
@@ -172,6 +172,9 @@ class LatentConditionedFeedforwards(Module):
         x,
         latent
     ):
+
+        if isinstance(x, (list, tuple)):
+            x = cat(x, dim = -1)
 
         x = self.proj_in(x)
 

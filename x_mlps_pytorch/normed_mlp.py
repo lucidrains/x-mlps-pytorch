@@ -2,7 +2,7 @@ from __future__ import annotations
 from functools import partial
 
 import torch
-from torch import nn
+from torch import nn, cat
 from torch.nn import Module, ModuleList, LayerNorm, RMSNorm
 
 # functions
@@ -65,6 +65,9 @@ class MLP(Module):
         self,
         x
     ):
+
+        if isinstance(x, (list, tuple)):
+            x = cat(x, dim = -1)
 
         for layer in self.layers:
             x = layer(x)

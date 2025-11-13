@@ -93,6 +93,9 @@ class MLP(Module):
         x,
         latent
     ):
+        if isinstance(x, (list, tuple)):
+            x = cat(x, dim = -1)
+
         cond = self.to_latent_cond(latent)
 
         if cond.ndim == 2 and x.ndim == 3:
