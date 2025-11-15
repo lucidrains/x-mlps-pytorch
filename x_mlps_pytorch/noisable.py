@@ -1,11 +1,13 @@
-
 from __future__ import annotations
+from functools import wraps
 from contextlib import contextmanager
 
 import torch
 from torch import is_tensor
 from torch.nn import Module
 from torch.func import functional_call
+
+has_cuda = torch.cuda.is_available()
 
 # helper functions
 
@@ -20,34 +22,36 @@ def default(v, d):
 
 # temporary seed
 
-@contextmanager
-def temp_seed(seed):
-    orig_torch_state = torch.get_rng_state()
+def with_seed(seed):
 
-    orig_cuda_states = None
-    if torch.cuda.is_available():
-        orig_cuda_states = torch.cuda.get_rng_state_all()
+    def decorator(fn):
 
-    torch.manual_seed(seed)
+        @wraps(fn)
+        def inner(*args, **kwargs):
+            orig_torch_state = torch.get_rng_state()
 
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-        
-    try:
-        yield
-        
-    finally:
-        torch.set_rng_state(orig_torch_state)
+            orig_cuda_states = None
+            if has_cuda:
+                orig_cuda_states = torch.cuda.get_rng_state_all()
 
-        if torch.cuda.is_available() and orig_cuda_states:
-            torch.cuda.set_rng_state_all(orig_cuda_states)
+            torch.manual_seed(seed)
 
-# torch.randn with seed
+            if has_cuda:
+                torch.cuda.manual_seed_all(seed)
 
-def randn_from_seed(seed, shape, device = None):
+            try:
+                out = fn(*args, **kwargs)
 
-    with temp_seed(seed):
-        return torch.randn(shape, device = device)
+            finally:
+                torch.set_rng_state(orig_torch_state)
+
+                if has_cuda and orig_cuda_states:
+                    torch.cuda.set_rng_state_all(orig_cuda_states)
+
+            return out
+        return inner
+
+    return decorator
 
 # wrapper
 
@@ -119,14 +123,14 @@ class Noisable(Module):
             # determine the noise
 
             if isinstance(noise_or_seed, int):
-                noise = randn_from_seed(noise_or_seed, param_shape)
+                noise = with_seed(noise_or_seed)(torch.randn)(param_shape)
 
             elif isinstance(noise_or_seed, tuple) and len(noise_or_seed) == 2:
 
                 # overriding noise scale per param
 
                 seed, noise_scale = noise_or_seed
-                noise = randn_from_seed(seed, param_shape)
+                noise = with_seed(seed)(torch.randn)(param_shape)
 
             elif is_tensor(noise_or_seed):
                 noise = noise_or_seed

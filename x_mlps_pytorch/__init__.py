@@ -25,5 +25,5 @@ from x_mlps_pytorch.grouped_nff import (
 
 from x_mlps_pytorch.noisable import (
     Noisable,
-    randn_from_seed
+    with_seed
 )
