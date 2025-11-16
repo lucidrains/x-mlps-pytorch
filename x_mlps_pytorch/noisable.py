@@ -1,4 +1,5 @@
 from __future__ import annotations
+from copy import deepcopy
 from functools import wraps
 from contextlib import contextmanager
 
@@ -77,11 +78,11 @@ class Noisable(Module):
         noise_for_params = dict(),
         noise_scale = None,
     ):
-        self.get_noised_params(noise_for_params, inplace = True)
+        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True)
 
         yield
 
-        self.get_noised_params(noise_for_params, inplace = True, negate = True)
+        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True, negate = True)
 
     def add_noise_(
         self,
@@ -89,7 +90,7 @@ class Noisable(Module):
         noise_scale = None,
         negate = False
     ):
-        self.get_noised_params(noise_for_params, inplace = True, negate = negate)
+        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True, negate = negate)
 
     def get_noised_params(
         self,
@@ -105,7 +106,7 @@ class Noisable(Module):
         # noise the params
 
         if not inplace:
-            noised_params = dict()
+            noised_params = deepcopy(named_params)
             return_params = noised_params
         else:
             return_params = named_params
@@ -137,17 +138,15 @@ class Noisable(Module):
             else:
                 raise ValueError('invalid type, noise must be float tensor or int')
 
+            noise = noise.to(self.device)
+
             # scale the noise
 
             if noise_scale != 1.:
-                noise.mul_(noise_scale)
-
-            # add to param
-
-            noise = noise.to(self.device)
+                noise = noise * noise_scale
 
             if negate:
-                noise.mul_(-1)
+                noise = noise * -1
 
             # if inplace, add directly to param, else set the new dictionary and return that
 
