@@ -60,13 +60,16 @@ class Noisable(Module):
     def __init__(
         self,
         model: Module,
-        noise_scale = 1.
+        noise_scale = 1.,
+        overridable_noise_scale = True
     ):
         super().__init__()
         assert not is_empty(list(model.parameters()))
 
         self.model = model
         self.noise_scale = noise_scale
+
+        self.overridable_noise_scale = overridable_noise_scale # if set to True, if a noise scale is given alongside a seed in a tuple (int, float), that value replaces the noise scale rather than scales it again
 
     @property
     def device(self):
@@ -116,7 +119,7 @@ class Noisable(Module):
             param_shape = param.shape
 
             noise_or_seed = noise_for_params.get(name, None)
-            noise_scale = default(noise_scale, self.noise_scale)
+            param_noise_scale = default(noise_scale, self.noise_scale)
 
             if not exists(noise_or_seed):
                 continue
@@ -128,10 +131,15 @@ class Noisable(Module):
 
             elif isinstance(noise_or_seed, tuple) and len(noise_or_seed) == 2:
 
-                # overriding noise scale per param
-
-                seed, noise_scale = noise_or_seed
+                seed, noise_scale_with_seed = noise_or_seed
                 noise = with_seed(seed)(torch.randn)(param_shape)
+
+                # maybe overriding noise scale per param
+
+                if self.overridable_noise_scale:
+                    param_noise_scale = noise_scale_with_seed
+                else:
+                    param_noise_scale *= noise_scale_with_seed
 
             elif is_tensor(noise_or_seed):
                 noise = noise_or_seed
@@ -142,11 +150,11 @@ class Noisable(Module):
 
             # scale the noise
 
-            if noise_scale != 1.:
-                noise = noise * noise_scale
-
             if negate:
-                noise = noise * -1
+                param_noise_scale *= -1
+
+            if param_noise_scale != 1.:
+                noise = noise * param_noise_scale
 
             # if inplace, add directly to param, else set the new dictionary and return that
 
