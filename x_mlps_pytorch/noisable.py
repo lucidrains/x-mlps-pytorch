@@ -24,8 +24,12 @@ def default(v, d):
 # temporary seed
 
 def with_seed(seed):
-
     def decorator(fn):
+
+        # if no seed, just return the function
+
+        if not exists(seed):
+            return fn
 
         @wraps(fn)
         def inner(*args, **kwargs):
