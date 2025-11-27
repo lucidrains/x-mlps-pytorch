@@ -95,16 +95,18 @@ class Noisable(Module):
         self,
         noise_for_params = dict(),
         noise_scale = None,
+        add_to_grad = False,
         negate = False
     ):
-        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True, negate = negate)
+        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True, add_to_grad = add_to_grad, negate = negate)
 
     def get_noised_params(
         self,
         noise_for_params = dict(),
         inplace = False,
         noise_scale = None,
-        negate = False
+        negate = False,
+        add_to_grad = False
     ):
         # get named params
 
@@ -162,9 +164,21 @@ class Noisable(Module):
 
             # if inplace, add directly to param, else set the new dictionary and return that
 
-            if inplace:
+            if inplace and not add_to_grad:
+                # adding noise inplace to params
+
                 param.data.add_(noise)
+
+            elif inplace and add_to_grad:
+                # adding noise inplace to grads
+
+                if not exists(param.grad):
+                    param.grad = torch.zeros_like(param.data)
+
+                param.grad.add_(noise)
+
             else:
+                # adding to a new dictionary
                 noised_params[name] = param + noise
 
         return return_params
