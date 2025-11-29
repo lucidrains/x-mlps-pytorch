@@ -82,3 +82,13 @@ values = critic(state) # (1,)
     url     = {https://api.semanticscholar.org/CorpusID:276558261}
 }
 ```
+
+```bibtex
+@inproceedings{wang2025,
+    title   = {1000 Layer Networks for Self-Supervised {RL}: Scaling Depth Can Enable New Goal-Reaching Capabilities},
+    author  = {Kevin Wang and Ishaan Javali and Micha{\l} Bortkiewicz and Tomasz Trzcinski and Benjamin Eysenbach},
+    booktitle = {The Thirty-ninth Annual Conference on Neural Information Processing Systems},
+    year    = {2025},
+    url     = {https://openreview.net/forum?id=s0JVsx3bx1}
+}
+```

@@ -21,6 +21,7 @@ class Feedforwards(Module):
         activation = nn.GELU(),
         bias = True,
         expansion_factor = 4.,
+        norm_after_activation = False,
         final_norm = False
     ):
         super().__init__()
@@ -37,6 +38,7 @@ class Feedforwards(Module):
                 nn.RMSNorm(dim),
                 nn.Linear(dim, dim_hidden, bias = bias),
                 activation,
+                nn.RMSNorm(dim) if norm_after_activation else nn.Identity(),
                 nn.Linear(dim_hidden, dim, bias = bias)
             )
 
