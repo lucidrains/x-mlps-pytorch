@@ -1,10 +1,10 @@
 from __future__ import annotations
 from copy import deepcopy
-from functools import wraps
+from functools import partial, wraps
 from contextlib import contextmanager
 
 import torch
-from torch import is_tensor
+from torch import randn, is_tensor
 from torch.nn import Module
 from torch.func import functional_call
 
@@ -20,6 +20,20 @@ def is_empty(arr):
 
 def default(v, d):
     return v if exists(v) else d
+
+# custom randn that uses low rank if ndim == 2
+
+def randn_low_rank(shape, *, k = None):
+
+    if not exists(k) or len(shape) != 2:
+        return randn(shape)
+
+    o, i = shape
+
+    a = randn((o, k))
+    b = randn((k, i))
+
+    return a @ b
 
 # temporary seed
 
@@ -65,7 +79,8 @@ class Noisable(Module):
         self,
         model: Module,
         noise_scale = 1.,
-        overridable_noise_scale = True
+        overridable_noise_scale = True,
+        low_rank = None
     ):
         super().__init__()
         assert not is_empty(list(model.parameters()))
@@ -74,6 +89,9 @@ class Noisable(Module):
         self.noise_scale = noise_scale
 
         self.overridable_noise_scale = overridable_noise_scale # if set to True, if a noise scale is given alongside a seed in a tuple (int, float), that value replaces the noise scale rather than scales it again
+
+        # low rank noise (a la lora)
+        self.create_noise_fn = randn if not low_rank else partial(randn_low_rank, k = low_rank)
 
     @property
     def device(self):
@@ -133,12 +151,12 @@ class Noisable(Module):
             # determine the noise
 
             if isinstance(noise_or_seed, int):
-                noise = with_seed(noise_or_seed)(torch.randn)(param_shape)
+                noise = with_seed(noise_or_seed)(self.create_noise_fn)(param_shape)
 
             elif isinstance(noise_or_seed, tuple) and len(noise_or_seed) == 2:
 
                 seed, noise_scale_with_seed = noise_or_seed
-                noise = with_seed(seed)(torch.randn)(param_shape)
+                noise = with_seed(seed)(self.create_noise_fn)(param_shape)
 
                 # maybe overriding noise scale per param
 
