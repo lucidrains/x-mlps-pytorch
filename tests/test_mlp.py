@@ -50,9 +50,18 @@ def test_mlp_with_norms(
 ):
     from x_mlps_pytorch.normed_mlp import MLP
 
-    mlp = MLP(256, 128, 64, use_rmsnorm = rmsnorm)
+    mlp = MLP(256, 128, 128, 64, use_rmsnorm = rmsnorm)
 
     x = torch.randn(7, 3, 256)
+
+    assert mlp(x).shape == (7, 3, 64)
+
+def test_residual_normed_mlp():
+    from x_mlps_pytorch.residual_normed_mlp import ResidualNormedMLP
+
+    mlp = ResidualNormedMLP(256, depth = 16, residual_every = 4, dim_out = 64, dim_in = 77)
+
+    x = torch.randn(7, 3, 77)
 
     assert mlp(x).shape == (7, 3, 64)
 
