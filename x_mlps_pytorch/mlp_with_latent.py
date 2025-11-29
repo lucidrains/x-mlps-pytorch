@@ -123,7 +123,7 @@ def create_mlp(
     dim_out = None,
     **mlp_kwargs
 ):
-    dims = (dim,) * depth
+    dims = (dim,) * (depth + 1)
 
     if exists(dim_in):
         dims = (dim_in, *dims)
