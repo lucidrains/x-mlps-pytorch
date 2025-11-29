@@ -25,10 +25,16 @@ def default(v, d):
 
 def randn_low_rank(shape, *, k = None):
 
-    if not exists(k) or len(shape) != 2:
+    o, i = shape
+
+    if (
+        not exists(k) or
+        len(shape) != 2 or
+        o <= k or
+        i <= k
+    ):
         return randn(shape)
 
-    o, i = shape
 
     a = randn((o, k))
     b = randn((k, i))
