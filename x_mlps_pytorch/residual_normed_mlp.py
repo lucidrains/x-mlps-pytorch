@@ -23,7 +23,7 @@ class ResidualNormedMLP(Module):
     def __init__(
         self,
         dim,
-        depth,
+        depth = 32,
         residual_every = 4, # they used every 4
         dim_in = None,
         dim_out = None,
