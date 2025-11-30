@@ -31,8 +31,7 @@ class ResidualNormedMLP(Module):
         bias = True,
         norm_fn: Module | None = None,
         use_rmsnorm = False,
-        final_norm = False,
-        activate_last = False,
+        final_norm = True,
         skip_to_output = False # auto-compression network
     ):
         super().__init__()
@@ -61,8 +60,9 @@ class ResidualNormedMLP(Module):
             block = create_normed_mlp(
                 dim = dim,
                 depth = residual_every,
-                use_rmsnorm = use_rmsnorm,
+                norm_fn = norm_fn,
                 activation = activation,
+                bias = bias,
                 activate_last = True
             )
 
