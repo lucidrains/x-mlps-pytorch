@@ -56,10 +56,11 @@ def test_mlp_with_norms(
 
     assert mlp(x).shape == (7, 3, 64)
 
-def test_residual_normed_mlp():
+@param('skip_to_output', (False, True))
+def test_residual_normed_mlp(skip_to_output):
     from x_mlps_pytorch.residual_normed_mlp import ResidualNormedMLP
 
-    mlp = ResidualNormedMLP(256, depth = 16, residual_every = 4, dim_out = 64, dim_in = 77)
+    mlp = ResidualNormedMLP(256, depth = 16, residual_every = 4, dim_out = 64, dim_in = 77, skip_to_output = skip_to_output)
 
     x = torch.randn(7, 3, 77)
 

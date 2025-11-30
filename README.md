@@ -92,3 +92,13 @@ values = critic(state) # (1,)
     url     = {https://openreview.net/forum?id=s0JVsx3bx1}
 }
 ```
+
+```bibtex
+@inproceedings{dorovatas2025autocompressing,
+    title  = {Auto-Compressing Networks},
+    author = {Vaggelis Dorovatas and Georgios Paraskevopoulos and Alexandros Potamianos},
+    booktitle = {The Thirty-ninth Annual Conference on Neural Information Processing Systems},
+    year    = {2025},
+    url     = {https://openreview.net/forum?id=eIDa6pd9iQ}
+}
+```

@@ -32,7 +32,8 @@ class ResidualNormedMLP(Module):
         norm_fn: Module | None = None,
         use_rmsnorm = False,
         final_norm = False,
-        activate_last = False
+        activate_last = False,
+        skip_to_output = False # auto-compression network
     ):
         super().__init__()
         assert divisible_by(depth, residual_every), '`depth` must be divisible by `residual_every`'
@@ -69,18 +70,36 @@ class ResidualNormedMLP(Module):
 
         self.layers = ModuleList(layers)
 
+        self.skip_to_output = skip_to_output
+
     def forward(
         self,
         x
     ):
+        skip_to_output = self.skip_to_output
 
         if isinstance(x, (list, tuple)):
             x = cat(x, dim = -1)
 
         x = self.proj_in(x)
 
+        layer_outs = []
+
         for layer in self.layers:
-            x = layer(x) + x
+            out = layer(x)
+
+            # traditional residual
+
+            if not skip_to_output:
+                x = x + out
+                continue
+
+            layer_outs.append(out)
+
+        # Dorovatas et al. https://openreview.net/forum?id=eIDa6pd9iQ
+
+        if skip_to_output:
+            x = sum(layer_outs)
 
         x = self.final_norm(x)
 
