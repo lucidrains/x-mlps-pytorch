@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from copy import deepcopy
 from functools import partial, wraps
 from contextlib import contextmanager
@@ -35,11 +36,12 @@ def randn_low_rank(shape, *, k = None):
     ):
         return randn(shape)
 
-
     a = randn((o, k))
     b = randn((k, i))
 
-    return a @ b
+    scale = (k ** -0.5)
+
+    return (a @ b) * scale
 
 # temporary seed
 
