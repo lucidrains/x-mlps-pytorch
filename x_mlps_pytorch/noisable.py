@@ -109,12 +109,13 @@ class Noisable(Module):
         self,
         noise_for_params = dict(),
         noise_scale = None,
+        negate = False
     ):
-        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True)
+        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True, negate = negate)
 
         yield
 
-        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True, negate = True)
+        self.get_noised_params(noise_for_params, noise_scale = noise_scale, inplace = True, negate = not negate)
 
     def add_noise_(
         self,
