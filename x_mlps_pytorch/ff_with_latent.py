@@ -8,6 +8,8 @@ from torch.nn import Linear, Module, ModuleList
 
 from einops import rearrange
 
+from x_mlps_pytorch.norms import RMSNorm
+
 # functions
 
 def exists(v):
@@ -160,7 +162,7 @@ class LatentConditionedFeedforwards(Module):
 
         # maybe final norm
 
-        self.norm = nn.RMSNorm(dim) if final_norm else nn.Identity()
+        self.norm = RMSNorm(dim) if final_norm else nn.Identity()
 
         # proj in and out
 

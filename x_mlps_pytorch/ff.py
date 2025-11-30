@@ -2,6 +2,8 @@ import torch
 from torch import nn, cat
 from torch.nn import Module, ModuleList
 
+from x_mlps_pytorch.norms import RMSNorm
+
 # functions
 
 def exists(v):
@@ -35,10 +37,10 @@ class Feedforwards(Module):
         for _ in range(depth):
 
             layer = nn.Sequential(
-                nn.RMSNorm(dim),
+                RMSNorm(dim),
                 nn.Linear(dim, dim_hidden, bias = bias),
                 activation,
-                nn.RMSNorm(dim) if norm_after_activation else nn.Identity(),
+                RMSNorm(dim) if norm_after_activation else nn.Identity(),
                 nn.Linear(dim_hidden, dim, bias = bias)
             )
 
@@ -48,7 +50,7 @@ class Feedforwards(Module):
 
         # maybe final norm
 
-        self.norm = nn.RMSNorm(dim) if final_norm else nn.Identity()
+        self.norm = RMSNorm(dim) if final_norm else nn.Identity()
 
         # proj in and out
 

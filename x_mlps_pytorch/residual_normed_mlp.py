@@ -3,8 +3,9 @@ from functools import partial
 
 import torch
 from torch import nn, cat
-from torch.nn import Module, ModuleList, LayerNorm, RMSNorm, Identity
+from torch.nn import Module, ModuleList, Identity
 
+from x_mlps_pytorch.norms import RMSNorm, LayerNorm
 from x_mlps_pytorch.normed_mlp import create_mlp as create_normed_mlp
 
 # functions
@@ -49,7 +50,7 @@ class ResidualNormedMLP(Module):
         # norm type
 
         if not exists(norm_fn):
-            norm_fn = RMSNorm if use_rmsnorm else partial(LayerNorm, bias = False)
+            norm_fn = RMSNorm if use_rmsnorm else LayerNorm
 
         self.final_norm = norm_fn(dim) if final_norm else Identity()
 

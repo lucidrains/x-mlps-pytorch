@@ -3,7 +3,9 @@ from functools import partial
 
 import torch
 from torch import nn, cat
-from torch.nn import Module, ModuleList, LayerNorm, RMSNorm
+from torch.nn import Module, ModuleList
+
+from x_mlps_pytorch.norms import LayerNorm, RMSNorm
 
 # functions
 
@@ -37,7 +39,7 @@ class MLP(Module):
         # norm type
 
         if not exists(norm_fn):
-            norm_fn = nn.RMSNorm if use_rmsnorm else partial(nn.LayerNorm, bias = False)
+            norm_fn = RMSNorm if use_rmsnorm else LayerNorm
 
         *_, last_dim = dims
 
