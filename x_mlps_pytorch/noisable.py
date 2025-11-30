@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 from copy import deepcopy
 from functools import partial, wraps
 from contextlib import contextmanager
 
 import torch
-from torch import randn, is_tensor
+from torch import randn, tensor, is_tensor
 from torch.nn import Module
 from torch.func import functional_call
 
@@ -25,21 +26,21 @@ def default(v, d):
 
 def randn_low_rank(shape, *, k = None):
 
-    o, i = shape
-
     if (
         not exists(k) or
         len(shape) != 2 or
-        o <= k or
-        i <= k
+        (tensor(shape) <= k).any()
     ):
         return randn(shape)
 
+    o, i = shape
 
     a = randn((o, k))
     b = randn((k, i))
 
-    return a @ b
+    scale = (k ** -0.5)
+
+    return (a @ b) * scale
 
 # temporary seed
 
