@@ -199,9 +199,9 @@ class Noisable(Module):
                 # adding noise inplace to grads
 
                 if not exists(param.grad):
-                    param.grad = torch.zeros_like(param.data)
-
-                param.grad.add_(noise)
+                    param.grad = noise.clone()
+                else:
+                    param.grad.add_(noise)
 
             else:
                 # adding to a new dictionary
