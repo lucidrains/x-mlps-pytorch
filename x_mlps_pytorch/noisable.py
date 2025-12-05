@@ -164,8 +164,14 @@ class Noisable(Module):
 
             elif isinstance(noise_or_seed, tuple) and len(noise_or_seed) == 2:
 
-                seed, noise_scale_with_seed = noise_or_seed
-                noise = with_seed(seed)(self.create_noise_fn)(param_shape)
+                seed_or_noise, noise_scale_with_seed = noise_or_seed
+
+                # could be seed or tensor
+
+                if is_tensor(seed_or_noise):
+                    noise = seed_or_noise
+                else:
+                    noise = with_seed(seed_or_noise)(self.create_noise_fn)(param_shape)
 
                 # maybe overriding noise scale per param
 
