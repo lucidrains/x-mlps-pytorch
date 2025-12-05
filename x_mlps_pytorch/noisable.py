@@ -129,6 +129,7 @@ class Noisable(Module):
     def get_noised_params(
         self,
         noise_for_params = dict(),
+        noise_scale_for_params = dict(),
         inplace = False,
         noise_scale = None,
         negate = False,
@@ -178,6 +179,15 @@ class Noisable(Module):
             else:
                 raise ValueError('invalid type, noise must be float tensor or int')
 
+            # maybe scale noise by tensor
+
+            maybe_noise_scale = noise_scale_for_params.get(name, None)
+
+            if exists(maybe_noise_scale):
+                noise = noise * maybe_noise_scale
+
+            # device
+
             noise = noise.to(self.device)
 
             # scale the noise
@@ -213,13 +223,14 @@ class Noisable(Module):
         self,
         *args,
         noise_for_params = dict(),
+        noise_scale_for_params = dict(),
         noise_scale = None,
         **kwargs
     ):
         if is_empty(noise_for_params):
             return self.model(*args, **kwargs)
 
-        noised_params = self.get_noised_params(noise_for_params, noise_scale = noise_scale)
+        noised_params = self.get_noised_params(noise_for_params, noise_scale = noise_scale, noise_scale_for_params = noise_scale_for_params)
 
         # use functional call with noised params
 

@@ -3,7 +3,11 @@ import torch
 param = pytest.mark.parametrize
 
 @param('low_rank', (None, 2))
-def test_noisable(low_rank):
+@param('test_tensor_noise_scale', (False, True))
+def test_noisable(
+    low_rank,
+    test_tensor_noise_scale
+):
     from torch import nn
     from random import randrange
 
@@ -13,7 +17,7 @@ def test_noisable(low_rank):
 
     linear = nn.Linear(32, 64)
 
-    noisable_linear = Noisable(linear, noise_scale = 1e-2, low_rank = low_rank)
+    noisable_linear = Noisable(linear, low_rank = low_rank)
 
     x = torch.randn(3, 32)
 
@@ -32,7 +36,7 @@ def test_noisable(low_rank):
     # make sure can noise by passing in {param_name: seed}
 
     seed = randrange(int(1e7))
-    noised_out = noisable_linear(x, noise_for_params = dict(weight = seed))
+    noised_out = noisable_linear(x, noise_for_params = dict(weight = seed), noise_scale_for_params = dict(weight = torch.ones((64, 32))))
 
     assert not torch.allclose(out, noised_out)
 
