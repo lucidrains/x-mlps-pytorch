@@ -24,19 +24,19 @@ def default(v, d):
 
 # custom randn that uses low rank if ndim == 2
 
-def randn_low_rank(shape, *, k = None):
+def randn_low_rank(shape, *, k = None, dtype = None):
 
     if (
         not exists(k) or
         len(shape) != 2 or
         (tensor(shape) <= k).any()
     ):
-        return randn(shape)
+        return randn(shape, dtype = dtype)
 
     o, i = shape
 
-    a = randn((o, k))
-    b = randn((k, i))
+    a = randn((o, k), dtype = dtype)
+    b = randn((k, i), dtype = dtype)
 
     scale = (k ** -0.5)
 
@@ -150,6 +150,7 @@ class Noisable(Module):
         for name, param in named_params.items():
 
             param_shape = param.shape
+            param_dtype = param.dtype
 
             noise_or_seed = noise_for_params.get(name, None)
             param_noise_scale = default(noise_scale, self.noise_scale)
@@ -160,7 +161,7 @@ class Noisable(Module):
             # determine the noise
 
             if isinstance(noise_or_seed, int):
-                noise = with_seed(noise_or_seed)(self.create_noise_fn)(param_shape)
+                noise = with_seed(noise_or_seed)(self.create_noise_fn)(param_shape, dtype = param_dtype)
 
             elif isinstance(noise_or_seed, tuple) and len(noise_or_seed) == 2:
 
@@ -171,7 +172,7 @@ class Noisable(Module):
                 if is_tensor(seed_or_noise):
                     noise = seed_or_noise
                 else:
-                    noise = with_seed(seed_or_noise)(self.create_noise_fn)(param_shape)
+                    noise = with_seed(seed_or_noise)(self.create_noise_fn)(param_shape, dtype = param_dtype)
 
                 # maybe overriding noise scale per param
 
