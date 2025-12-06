@@ -200,10 +200,9 @@ class Noisable(Module):
             # scale the noise
 
             if negate:
-                param_noise_scale *= -1
+                param_noise_scale = param_noise_scale * -1
 
-            if param_noise_scale != 1.:
-                noise = noise * param_noise_scale
+            noise = noise * param_noise_scale
 
             # if inplace, add directly to param, else set the new dictionary and return that
 
