@@ -2,9 +2,6 @@
 
 Just a repository that will house MLPs for Pytorch, from garden variety to the exotic, so as to avoid having to reimplement them again and again for different projects (especially RL)
 
-Will also be the repository I use for testing out [Jules](https://jules.google.com/) and other AI assisted tools.
-
-
 ## Install
 
 ```bash
