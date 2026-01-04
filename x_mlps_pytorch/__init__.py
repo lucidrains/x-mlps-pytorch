@@ -27,3 +27,7 @@ from x_mlps_pytorch.noisable import (
     Noisable,
     with_seed
 )
+
+from x_mlps_pytorch.residual_normed_mlp import (
+    ResidualNormedMLP
+)
