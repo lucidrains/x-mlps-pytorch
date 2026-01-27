@@ -99,3 +99,13 @@ values = critic(state) # (1,)
     url     = {https://openreview.net/forum?id=eIDa6pd9iQ}
 }
 ```
+
+```bibtex
+@inproceedings{Lin2025ContinualLV,
+    title    = {Continual Learning via Sparse Memory Finetuning},
+    author   = {Jessy Lin and Luke S. Zettlemoyer and Gargi Ghosh and Wen-tau Yih and Aram H. Markosyan and Vincent-Pierre Berges and Barlas Ouguz},
+    year     = {2025},
+    url      = {https://api.semanticscholar.org/CorpusID:282203348},
+    blog_url = {https://jessylin.com/2025/10/20/continual-learning/}
+}
+```
