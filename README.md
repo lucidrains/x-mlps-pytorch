@@ -91,6 +91,18 @@ values = critic(state) # (1,)
 ```
 
 ```bibtex
+@misc{chen2026postlayernormbackstableexpressive,
+    title   = {Post-LayerNorm Is Back: Stable, ExpressivE, and Deep}, 
+    author  = {Chen Chen and Lai Wei},
+    year    = {2026},
+    eprint  = {2601.19895},
+    archivePrefix = {arXiv},
+    primaryClass = {cs.LG},
+    url     = {https://arxiv.org/abs/2601.19895}, 
+}
+```
+
+```bibtex
 @inproceedings{dorovatas2025autocompressing,
     title  = {Auto-Compressing Networks},
     author = {Vaggelis Dorovatas and Georgios Paraskevopoulos and Alexandros Potamianos},

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from functools import partial
+from itertools import zip_longest
 
 import torch
 from torch import nn, cat
@@ -12,6 +13,9 @@ from x_mlps_pytorch.normed_mlp import create_mlp as create_normed_mlp
 
 def exists(v):
     return v is not None
+
+def default(v, d):
+    return v if exists(v) else d
 
 def divisible_by(num, den):
     return (num % den) == 0
@@ -33,9 +37,13 @@ class ResidualNormedMLP(Module):
         norm_fn: Module | None = None,
         use_rmsnorm = False,
         final_norm = True,
-        skip_to_output = False # auto-compression network
+        skip_to_output = False,     # auto-compression network
+        keel_post_ln = False,       # use the keel post-norm architecture proposed by Chen et al. from Bytedance - https://arxiv.org/abs/2601.19895
+        keel_residual_scale = None  # defaults to number of blocks, for scaling the residual besides the first
     ):
         super().__init__()
+        assert not (keel_post_ln and skip_to_output)
+
         assert divisible_by(depth, residual_every), '`depth` must be divisible by `residual_every`'
 
         # proj in and out
@@ -52,11 +60,11 @@ class ResidualNormedMLP(Module):
         if not exists(norm_fn):
             norm_fn = RMSNorm if use_rmsnorm else LayerNorm
 
-        self.final_norm = norm_fn(dim) if final_norm else Identity()
-
         # layers
 
-        for _ in range(depth // residual_every):
+        num_blocks = depth // residual_every
+
+        for _ in range(num_blocks):
 
             block = create_normed_mlp(
                 dim = dim,
@@ -71,7 +79,15 @@ class ResidualNormedMLP(Module):
 
         self.layers = ModuleList(layers)
 
+        self.post_norms = ModuleList([norm_fn(dim) for _ in range(num_blocks - 1)]) if keel_post_ln else None
+
+        self.keel_residual_scale = default(keel_residual_scale, num_blocks)
+
         self.skip_to_output = skip_to_output
+
+        # final norm if not using keel post norm
+
+        self.final_norm = norm_fn(dim) if final_norm and not keel_post_ln else Identity()
 
     def forward(
         self,
@@ -86,17 +102,37 @@ class ResidualNormedMLP(Module):
 
         layer_outs = []
 
-        for layer in self.layers:
+        for layer_index, layer in enumerate(self.layers):
+            first_layer = layer_index == 0
+
+            residual = x
+
             out = layer(x)
 
-            # traditional residual
+            # skip to output - auto compression paper
 
-            if not skip_to_output:
-                x = x + out
+            if skip_to_output:
+                x = out
+                layer_outs.append(out)
                 continue
 
-            x = out
-            layer_outs.append(out)
+            # handle residual with maybe post norm with keel stabilisation techniques
+
+            has_post_norms = exists(self.post_norms)
+
+            if first_layer or not has_post_norms:
+                x = out + residual
+                continue
+
+            # handle post norm
+
+            post_norm = self.post_norms[layer_index - 1]
+
+            residual = residual * self.keel_residual_scale
+
+            x = out + residual
+
+            x = post_norm(x)
 
         # Dorovatas et al. https://openreview.net/forum?id=eIDa6pd9iQ
 
