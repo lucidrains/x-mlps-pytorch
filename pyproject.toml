@@ -1,6 +1,6 @@
 [project]
 name = "x-mlps-pytorch"
-version = "0.2.0"
+version = "0.2.5"
 description = "A collection of MLPs / Feedforwards for Pytorch"
 authors = [
     { name = "Phil Wang", email = "lucidrains@gmail.com" }
@@ -29,7 +29,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://pypi.org/project/x-mlps-pytorch/"
-Repository = "https://github.com/lucidrains/x-mlps"
+Repository = "https://codeberg.org/lucidrains/x-mlps"
 
 [build-system]
 requires = ["hatchling"]
@@ -50,3 +50,12 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["x_mlps_pytorch"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "x_mlps_pytorch",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+

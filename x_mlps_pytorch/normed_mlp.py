@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Callable
 from functools import partial
 
 import torch
@@ -20,8 +21,9 @@ class MLP(Module):
         *dims,
         activation = nn.ReLU(),
         bias = True,
-        norm_fn: Module | None = None,
+        norm_fn: Callable[[int], Module] | None = None,
         use_rmsnorm = False,
+        norm_elementwise_affine = None,
         final_norm = False,
         activate_last = False
     ):
@@ -40,6 +42,9 @@ class MLP(Module):
 
         if not exists(norm_fn):
             norm_fn = RMSNorm if use_rmsnorm else LayerNorm
+
+            if exists(norm_elementwise_affine):
+                norm_fn = partial(norm_fn, elementwise_affine = norm_elementwise_affine)
 
         *_, last_dim = dims
 
