@@ -62,6 +62,8 @@ class MLP(Module):
             # if not last, add a norm and an activation after each linear layer
 
             if not is_last or activate_last:
+                assert dim_out > 1, f'should not layernorm dimension of 1'
+
                 norm = norm_fn(dim_out)
 
                 layer_modules = (*layer_modules, norm, activation)

@@ -17,11 +17,17 @@ class RMSNorm(Module):
         elementwise_affine = True
     ):
         super().__init__()
-        self.gamma = nn.Parameter(torch.zeros(dim)) if elementwise_affine else None
+
+        if elementwise_affine:
+            self.gamma = nn.Parameter(torch.zeros(dim))
+        else:
+            self.register_buffer('gamma', torch.ones(dim))
+
+        self.offset = float(elementwise_affine)
         self.eps = eps
 
     def forward(self, x):
-        weight = (self.gamma + 1.) if exists(self.gamma) else None
+        weight = self.gamma + self.offset
         return F.rms_norm(x, x.shape[-1:], weight, eps = self.eps)
 
 class LayerNorm(Module):
@@ -32,9 +38,15 @@ class LayerNorm(Module):
         elementwise_affine = True
     ):
         super().__init__()
-        self.gamma = nn.Parameter(torch.zeros(dim)) if elementwise_affine else None
+
+        if elementwise_affine:
+            self.gamma = nn.Parameter(torch.zeros(dim))
+        else:
+            self.register_buffer('gamma', torch.ones(dim))
+
+        self.offset = float(elementwise_affine)
         self.eps = eps
 
     def forward(self, x):
-        weight = (self.gamma + 1.) if exists(self.gamma) else None
+        weight = self.gamma + self.offset
         return F.layer_norm(x, x.shape[-1:], weight, eps = self.eps)
