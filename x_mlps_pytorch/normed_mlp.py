@@ -57,14 +57,14 @@ class MLP(Module):
 
             layer = nn.Linear(dim_in, dim_out, bias = bias)
 
-            norm = norm_fn(dim_out)
+            layer_modules = (layer,)
 
-            layer_modules = (layer, norm)
-
-            # if not last, add an activation after each linear layer
+            # if not last, add a norm and an activation after each linear layer
 
             if not is_last or activate_last:
-                layer_modules = (*layer_modules, activation)
+                norm = norm_fn(dim_out)
+
+                layer_modules = (*layer_modules, norm, activation)
 
             layers.append(nn.Sequential(*layer_modules))
 
