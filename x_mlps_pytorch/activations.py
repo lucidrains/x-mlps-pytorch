@@ -83,7 +83,7 @@ class Sugar(Module):
         # only neg region for backward function gradients
 
         soft = torch.where(x > 0, forward_out, backward_out)
-        
+
         # straight-through during training
 
         return soft + (forward_out - soft).detach()

@@ -88,7 +88,7 @@ class Residual(Module):
 class L2Norm(Module):
     def __init__(self, dim = -1):
         super().__init__()
-        self.dim = dim        
+        self.dim = dim
 
     def forward(self, t):
         return l2norm(t, dim = self.dim)
@@ -287,7 +287,7 @@ class nFeedforwards(Module):
 
     def forward(
         self,
-        x        
+        x
     ):
 
         if self.input_preserve_magnitude:

@@ -92,13 +92,13 @@ values = critic(state) # (1,)
 
 ```bibtex
 @misc{chen2026postlayernormbackstableexpressive,
-    title   = {Post-LayerNorm Is Back: Stable, ExpressivE, and Deep}, 
+    title   = {Post-LayerNorm Is Back: Stable, ExpressivE, and Deep},
     author  = {Chen Chen and Lai Wei},
     year    = {2026},
     eprint  = {2601.19895},
     archivePrefix = {arXiv},
     primaryClass = {cs.LG},
-    url     = {https://arxiv.org/abs/2601.19895}, 
+    url     = {https://arxiv.org/abs/2601.19895},
 }
 ```
 
@@ -119,5 +119,17 @@ values = critic(state) # (1,)
     year     = {2025},
     url      = {https://api.semanticscholar.org/CorpusID:282203348},
     blog_url = {https://jessylin.com/2025/10/20/continual-learning/}
+}
+```
+
+```bibtex
+@misc{kimiteam2026attentionresiduals,
+    title   = {Attention Residuals},
+    author  = {Kimi Team and Guangyu Chen and Yu Zhang and Jianlin Su and Weixin Xu and Siyuan Pan and Yaoyu Wang and Yucheng Wang and Guanduo Chen and Bohong Yin and Yutian Chen and Junjie Yan and Ming Wei and Y. Zhang and Fanqing Meng and Chao Hong and Xiaotong Xie and Shaowei Liu and Enzhe Lu and Yunpeng Tai and Yanru Chen and Xin Men and Haiqing Guo and Y. Charles and Haoyu Lu and Lin Sui and Jinguo Zhu and Zaida Zhou and Weiran He and Weixiao Huang and Xinran Xu and Yuzhi Wang and Guokun Lai and Yulun Du and Yuxin Wu and Zhilin Yang and Xinyu Zhou},
+    year    = {2026},
+    eprint  = {2603.15031},
+    archivePrefix = {arXiv},
+    primaryClass = {cs.CL},
+    url     = {https://arxiv.org/abs/2603.15031},
 }
 ```

@@ -327,7 +327,7 @@ class nGroupedFeedforwards(Module):
 
     def forward(
         self,
-        x        
+        x
     ):
 
         x, inverse_pack = pack_with_inverse(x, 'b * d')
