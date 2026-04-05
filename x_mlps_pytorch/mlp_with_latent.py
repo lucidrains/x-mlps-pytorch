@@ -121,8 +121,17 @@ def create_mlp(
     *,
     dim_in = None,
     dim_out = None,
+    bias = True,
     **mlp_kwargs
 ):
+    no_depth = depth == 0
+    requires_proj_in_out = exists(dim_in) or exists(dim_out)
+
+    if no_depth and not requires_proj_in_out:
+        return nn.Identity()
+    elif no_depth:
+        return Linear(default(dim_in, dim), default(dim_out, dim), bias = bias)
+
     dims = (dim,) * (depth + 1)
 
     if exists(dim_in):
@@ -131,4 +140,8 @@ def create_mlp(
     if exists(dim_out):
         dims = (*dims, dim_out)
 
-    return MLP(*dims, **mlp_kwargs)
+    return MLP(
+        *dims,
+        bias = bias,
+        **mlp_kwargs
+    )

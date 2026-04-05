@@ -4,7 +4,7 @@ from functools import partial
 
 import torch
 from torch import nn, cat
-from torch.nn import Module, ModuleList
+from torch.nn import Linear, Module, ModuleList
 
 from x_mlps_pytorch.norms import LayerNorm, RMSNorm
 
@@ -12,6 +12,9 @@ from x_mlps_pytorch.norms import LayerNorm, RMSNorm
 
 def exists(v):
     return v is not None
+
+def default(v, d):
+    return v if exists(v) else d
 
 # main class
 
@@ -55,7 +58,7 @@ class MLP(Module):
         for i, (dim_in, dim_out) in enumerate(dim_in_out, start = 1):
             is_last = i == len(dim_in_out)
 
-            layer = nn.Linear(dim_in, dim_out, bias = bias)
+            layer = Linear(dim_in, dim_out, bias = bias)
 
             layer_modules = (layer,)
 
@@ -93,8 +96,17 @@ def create_mlp(
     *,
     dim_in = None,
     dim_out = None,
+    bias = True,
     **mlp_kwargs
 ):
+    no_depth = depth == 0
+    requires_proj_in_out = exists(dim_in) or exists(dim_out)
+
+    if no_depth and not requires_proj_in_out:
+        return nn.Identity()
+    elif no_depth:
+        return Linear(default(dim_in, dim), default(dim_out, dim), bias = bias)
+
     dims = (dim,) * (depth + 1)
 
     if exists(dim_in):
@@ -103,4 +115,8 @@ def create_mlp(
     if exists(dim_out):
         dims = (*dims, dim_out)
 
-    return MLP(*dims, **mlp_kwargs)
+    return MLP(
+        *dims,
+        bias = bias,
+        **mlp_kwargs
+    )

@@ -29,6 +29,53 @@ def test_create_mlp():
 
     assert mlp(x).shape == (7, 3, 64)
 
+def test_create_mlp_depth_zero():
+    from x_mlps_pytorch.mlp import create_mlp
+    from x_mlps_pytorch.mlp_with_latent import create_mlp as create_mlp_latent
+    from x_mlps_pytorch.normed_mlp import create_mlp as create_mlp_normed
+
+    x = torch.randn(7, 3, 256)
+
+    # 1. mlp
+    mlp = create_mlp(
+        dim = 128,
+        dim_in = 256,
+        dim_out = 64,
+        depth = 0
+    )
+    assert mlp(x).shape == (7, 3, 64)
+    assert isinstance(mlp, torch.nn.Linear)
+
+    mlp_identity = create_mlp(dim = 128, depth = 0)
+    assert isinstance(mlp_identity, torch.nn.Identity)
+
+    # 2. mlp_with_latent
+    mlp2 = create_mlp_latent(
+        dim = 128,
+        dim_in = 256,
+        dim_out = 64,
+        dim_latent = 33,
+        depth = 0
+    )
+    assert mlp2(x).shape == (7, 3, 64)
+    assert isinstance(mlp2, torch.nn.Linear)
+
+    mlp2_identity = create_mlp_latent(dim = 128, dim_latent = 33, depth = 0)
+    assert isinstance(mlp2_identity, torch.nn.Identity)
+
+    # 3. normed_mlp
+    mlp3 = create_mlp_normed(
+        dim = 128,
+        dim_in = 256,
+        dim_out = 64,
+        depth = 0
+    )
+    assert mlp3(x).shape == (7, 3, 64)
+    assert isinstance(mlp3, torch.nn.Linear)
+
+    mlp3_identity = create_mlp_normed(dim = 128, depth = 0)
+    assert isinstance(mlp3_identity, torch.nn.Identity)
+
 @param('latent_mlp', (False, True))
 @param('condition_hadamard_hiddens', (False, True))
 def test_latent_conditioned_mlp(
