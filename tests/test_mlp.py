@@ -103,14 +103,15 @@ def test_mlp_with_norms(
 
     assert mlp(x).shape == (7, 3, 64)
 
-@param('skip_to_output, keel_post_ln', ((False, True), (True, False), (False, False)))
+@param('skip_to_output, keel_post_ln, use_orthogonal_residual', ((False, True, False), (True, False, False), (False, False, False), (False, False, True)))
 def test_residual_normed_mlp(
     skip_to_output,
-    keel_post_ln
+    keel_post_ln,
+    use_orthogonal_residual
 ):
     from x_mlps_pytorch.residual_normed_mlp import ResidualNormedMLP
 
-    mlp = ResidualNormedMLP(256, depth = 16, residual_every = 4, dim_out = 64, dim_in = 77, skip_to_output = skip_to_output, keel_post_ln = keel_post_ln)
+    mlp = ResidualNormedMLP(256, depth = 16, residual_every = 4, dim_out = 64, dim_in = 77, skip_to_output = skip_to_output, keel_post_ln = keel_post_ln, use_orthogonal_residual = use_orthogonal_residual)
 
     x = torch.randn(7, 3, 77)
 

@@ -3,6 +3,7 @@ from functools import partial
 from itertools import zip_longest
 
 import torch
+import torch.nn.functional as F
 from torch import nn, cat
 from torch.nn import Module, ModuleList, Identity
 
@@ -19,6 +20,36 @@ def default(v, d):
 
 def divisible_by(num, den):
     return (num % den) == 0
+
+# modules
+
+class ResidualUpdate(Module):
+    def forward(self, x, residual):
+        return x + residual
+
+class OrthogonalResidualUpdate(Module):
+    def __init__(
+        self,
+        double_precision = True
+    ):
+        super().__init__()
+        self.double_precision = double_precision
+
+    def forward(self, x, residual):
+        use_double, dtype = self.double_precision, residual.dtype
+
+        orig_residual = residual
+        if use_double:
+            residual, x = residual.double(), x.double()
+
+        unit = F.normalize(residual, dim = -1)
+        parallel = (x * unit).sum(dim = -1, keepdim = True) * unit
+        orthogonal = x - parallel
+
+        if use_double:
+            orthogonal = orthogonal.to(dtype)
+
+        return orig_residual + orthogonal
 
 # main class
 
@@ -38,6 +69,8 @@ class ResidualNormedMLP(Module):
         use_rmsnorm = False,
         final_norm = True,
         skip_to_output = False,     # auto-compression network
+        use_orthogonal_residual = False,
+        orthogonal_residual_double_precision = True,
         keel_post_ln = False,       # use the keel post-norm architecture proposed by Chen et al. from Bytedance - https://arxiv.org/abs/2601.19895
         keel_residual_scale = None  # defaults to number of blocks, for scaling the residual besides the first
     ):
@@ -85,6 +118,11 @@ class ResidualNormedMLP(Module):
 
         self.skip_to_output = skip_to_output
 
+        if use_orthogonal_residual:
+            self.residual_update = OrthogonalResidualUpdate(double_precision = orthogonal_residual_double_precision)
+        else:
+            self.residual_update = ResidualUpdate()
+
         # final norm if not using keel post norm
 
         self.final_norm = norm_fn(dim) if final_norm and not keel_post_ln else Identity()
@@ -121,7 +159,7 @@ class ResidualNormedMLP(Module):
             has_post_norms = exists(self.post_norms)
 
             if first_layer or not has_post_norms:
-                x = out + residual
+                x = self.residual_update(out, residual)
                 continue
 
             # handle post norm
@@ -130,7 +168,7 @@ class ResidualNormedMLP(Module):
 
             residual = residual * self.keel_residual_scale
 
-            x = out + residual
+            x = self.residual_update(out, residual)
 
             x = post_norm(x)
 
