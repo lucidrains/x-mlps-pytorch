@@ -1,5 +1,3 @@
-from functools import partial
-
 import torch
 from torch.nn import Module, ReLU
 
@@ -66,11 +64,13 @@ class Sugar(Module):
     def __init__(
         self,
         forward_fn: Module,
-        backward_fn: Module
+        backward_fn: Module,
+        neg_region_only = False
     ):
         super().__init__()
         self.forward_fn = forward_fn
         self.backward_fn = backward_fn
+        self.neg_region_only = neg_region_only
 
     def forward(self, x):
         forward_out = self.forward_fn(x)
@@ -80,9 +80,9 @@ class Sugar(Module):
 
         backward_out = self.backward_fn(x)
 
-        # only neg region for backward function gradients
+        # maybe only neg region for backward function gradients
 
-        soft = torch.where(x > 0, forward_out, backward_out)
+        soft = torch.where(x > 0, forward_out, backward_out) if self.neg_region_only else backward_out
 
         # straight-through during training
 
@@ -92,3 +92,8 @@ class Sugar(Module):
 
 def ReluNelu(alpha = 0.05):
     return Sugar(ReLU(), NeLU(alpha))
+
+# sugar bsilu - witnessed effects in a relu attention
+
+def SugarBSiLU(alpha = 1.67, neg_region_only = False):
+    return Sugar(ReLU(), BSiLU(alpha), neg_region_only = neg_region_only)
