@@ -129,3 +129,48 @@ def test_mlp_list_tensor_input():
     ]
 
     assert mlp(x).shape == (7, 3, 64)
+
+def test_create_mlp_squeeze_out():
+    from x_mlps_pytorch.mlp import create_mlp
+
+    mlp = create_mlp(
+        dim = 128,
+        dim_in = 256,
+        dim_out = 1,
+        depth = 4,
+        squeeze_out = True
+    )
+
+    x = torch.randn(7, 3, 256)
+
+    assert mlp(x).shape == (7, 3)
+
+def test_create_mlp_squeeze_out_depth_zero():
+    from x_mlps_pytorch.mlp import create_mlp
+
+    mlp_squeeze = create_mlp(
+        dim = 128,
+        dim_in = 256,
+        dim_out = 1,
+        depth = 1,
+        squeeze_out = True
+    )
+
+    mlp_no_squeeze = create_mlp(
+        dim = 128,
+        dim_in = 256,
+        dim_out = 1,
+        depth = 1,
+        squeeze_out = False
+    )
+
+    mlp_no_squeeze.load_state_dict(mlp_squeeze.state_dict())
+
+    x = torch.randn(7, 3, 256)
+
+    out_squeeze = mlp_squeeze(x)
+    out_no_squeeze = mlp_no_squeeze(x)
+
+    assert out_squeeze.shape == (7, 3)
+    assert out_no_squeeze.shape == (7, 3, 1)
+    assert torch.allclose(out_squeeze, out_no_squeeze.squeeze(-1))
