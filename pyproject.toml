@@ -1,6 +1,6 @@
 [project]
 name = "x-mlps-pytorch"
-version = "0.3.5"
+version = "0.4.0"
 description = "A collection of MLPs / Feedforwards for Pytorch"
 authors = [
     { name = "Phil Wang", email = "lucidrains@gmail.com" }

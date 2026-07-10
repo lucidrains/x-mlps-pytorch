@@ -38,3 +38,8 @@ from x_mlps_pytorch.attn_residual_normed_mlp import (
 )
 
 from x_mlps_pytorch.gradient_dropout import GradientDropout
+
+from x_mlps_pytorch.filmable_mlp import (
+    FiLMableMLP,
+    create_filmable_mlp
+)
