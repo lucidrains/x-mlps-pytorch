@@ -33,7 +33,7 @@ class FiLMableMLP(Module):
 
         self.cond_prepared = cond_prepared
 
-        self.cond_mlp = None
+        cond_mlp = None
         final_cond_dim = cond_dim
 
         if not cond_prepared:
@@ -53,13 +53,16 @@ class FiLMableMLP(Module):
                 ])
                 cond_dim_in = cond_dim_out
 
-            self.cond_mlp = nn.Sequential(*cond_layers)
+            cond_mlp = nn.Sequential(*cond_layers)
             final_cond_dim = cond_dim_in
+
+        self.cond_mlp = cond_mlp
+
         # main MLP layers
 
         dim_in_out = tuple(zip(dims[:-1], dims[1:]))
 
-        self.dim_outs = []
+        dim_outs = []
         layers = []
 
         for i, (dim_in, dim_out) in enumerate(dim_in_out, start = 1):
@@ -77,8 +80,9 @@ class FiLMableMLP(Module):
                 layer_activation
             ]))
 
-            self.dim_outs.append(dim_out)
+            dim_outs.append(dim_out)
 
+        self.dim_outs = dim_outs
         self.layers = ModuleList(layers)
 
         # project gamma beta
@@ -97,6 +101,9 @@ class FiLMableMLP(Module):
     ):
         if isinstance(x, (list, tuple)):
             x = cat(x, dim = -1)
+
+        if x.ndim == 3 and cond.ndim == 2:
+            cond = rearrange(cond, 'b d -> b 1 d')
 
         # maybe prepare cond
 
@@ -118,11 +125,11 @@ class FiLMableMLP(Module):
         for (linear, act), layer_gamma, layer_beta in zip(self.layers, gammas, betas):
             x = linear(x)
 
-            if x.ndim == 3 and layer_gamma.ndim == 2:
-                layer_gamma = rearrange(layer_gamma, 'b d -> b 1 d')
-                layer_beta = rearrange(layer_beta, 'b d -> b 1 d')
+            # film
 
             x = x * (layer_gamma + 1.) + layer_beta
+
+            # activation
 
             x = act(x)
 
