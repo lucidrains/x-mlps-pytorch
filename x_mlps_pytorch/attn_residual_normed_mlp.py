@@ -28,21 +28,21 @@ class AttentionPool(Module):
         self.query = nn.Parameter(torch.randn(dim) * 1e-2)
 
         self.to_q = nn.Linear(dim, dim)
-        self.to_k = nn.Sequential(nn.Linear(dim, dim), nn.RMSNorm(dim))
-        self.to_v = nn.Linear(dim, dim)
+        self.q_norm = RMSNorm(dim)
+        self.k_norm = RMSNorm(dim)
 
     def forward(self, context):
         batch = context.shape[0]
 
         q = repeat(self.query, 'd -> b d', b = batch)
         q = self.to_q(q)
+        q = self.q_norm(q)
 
-        k = self.to_k(context)
-        v = self.to_v(context)
+        k = self.k_norm(context)
 
         sim = einsum('b d, b j d -> b j', q, k) * self.scale
         attn = sim.softmax(dim = -1)
-        out = einsum('b j, b j d -> b d', attn, v)
+        out = einsum('b j, b j d -> b d', attn, context)
 
         return out
 
