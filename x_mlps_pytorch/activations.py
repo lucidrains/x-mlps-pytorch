@@ -1,7 +1,22 @@
 import torch
-from torch.nn import Module, ReLU
+from math import sqrt
+from torch import tensor
+from torch.nn import Module, Parameter, ReLU
+
+def exists(v):
+    return v is not None
+
+def default(v, d):
+    return v if exists(v) else d
 
 # relu squared with optional signing
+# signed variant is the odd extension, sign(x)·x² = x·|x|, so negative inputs get a response
+
+def relu_squared(x, signed = False):
+    if signed:
+        return x.square() * x.sign()
+
+    return x.relu().square()
 
 class ReluSquared(Module):
     def __init__(self, signed = False):
@@ -9,12 +24,35 @@ class ReluSquared(Module):
         self.signed = signed
 
     def forward(self, x):
-        out = x.relu().square()
+        return relu_squared(x, signed = self.signed)
 
-        if not self.signed:
-            return out
+# star relu - relu squared with learned scale and bias (CaFormer paper)
+# defaults give zero mean, unit variance outputs for a unit gaussian input
 
-        return out * x.sign()
+class StarRelu(Module):
+    def __init__(
+        self,
+        signed = False,
+        alpha = None,
+        beta = None
+    ):
+        super().__init__()
+        self.relu_squared = ReluSquared(signed = signed)
+
+        # signed variant is x·|x|, odd and zero mean over a unit gaussian, with variance 3
+
+        if signed:
+            alpha = default(alpha, 1 / sqrt(3))
+            beta = default(beta, 0.)
+        else:
+            alpha = default(alpha, 1 / sqrt(5 / 4))
+            beta = default(beta, -alpha / 2)
+
+        self.alpha = Parameter(tensor(alpha))
+        self.beta = Parameter(tensor(beta))
+
+    def forward(self, x):
+        return self.alpha * self.relu_squared(x) + self.beta
 
 # sugar-(bsilu | nelu)
 

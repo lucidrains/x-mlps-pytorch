@@ -133,3 +133,20 @@ values = critic(state) # (1,)
     url     = {https://arxiv.org/abs/2603.15031},
 }
 ```
+
+```bibtex
+@article{Yu_2024,
+    title     = {MetaFormer Baselines for Vision},
+    volume    = {46},
+    number    = {2},
+    pages     = {896--912},
+    journal   = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+    publisher = {Institute of Electrical and Electronics Engineers (IEEE)},
+    author    = {Yu, Weihao and Si, Chenyang and Zhou, Pan and Luo, Mi and Zhou, Yichen and Feng, Jiashi and Yan, Shuicheng and Wang, Xinchao},
+    year      = {2024},
+    month     = feb,
+    doi       = {10.1109/TPAMI.2023.3329173},
+    issn      = {1939-3539},
+    url       = {https://doi.org/10.1109/TPAMI.2023.3329173}
+}
+```
