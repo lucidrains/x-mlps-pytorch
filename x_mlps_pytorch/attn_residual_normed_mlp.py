@@ -27,7 +27,11 @@ class AttentionPool(Module):
         self.scale = dim ** -0.5
         self.query = nn.Parameter(torch.randn(dim) * 1e-2)
 
-        self.to_q = nn.Linear(dim, dim)
+        self.to_q = nn.Sequential(
+            RMSNorm(dim),
+            nn.Linear(dim, dim, bias = False)
+        )
+
         self.q_norm = RMSNorm(dim)
         self.k_norm = RMSNorm(dim)
 
