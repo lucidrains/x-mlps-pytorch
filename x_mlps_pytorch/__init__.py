@@ -37,7 +37,8 @@ from x_mlps_pytorch.lora import LoRA
 
 from x_mlps_pytorch.attn_residual_normed_mlp import (
     AttentionResidual,
-    AttnResidualNormedMLP
+    AttnResidualNormedMLP,
+    RelativePositionBias
 )
 
 from x_mlps_pytorch.gradient_dropout import GradientDropout

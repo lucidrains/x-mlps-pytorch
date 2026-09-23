@@ -3,6 +3,7 @@
 #   "x-mlps-pytorch",
 #   "torch",
 #   "einops",
+#   "einx==0.4.0",
 #   "x-ppo",
 #   "gymnasium[box2d]",
 #   "moviepy",

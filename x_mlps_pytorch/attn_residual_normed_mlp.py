@@ -4,7 +4,8 @@ import torch
 from torch import nn, cat, stack, Tensor
 from torch.nn import Module, ModuleList, Identity
 
-from einops import einsum, rearrange
+import einx
+from einops import einsum, rearrange, repeat
 
 from x_mlps_pytorch.norms import RMSNorm, LayerNorm
 from x_mlps_pytorch.lora import LoRA
@@ -16,6 +17,33 @@ def exists(v):
 
 def default(v, d):
     return v if exists(v) else d
+
+# learned relative position bias, shared across all attention residuals
+# indexed from the most recent hidden (0) into the past, one learned row per stream
+
+class RelativePositionBias(Module):
+    def __init__(
+        self,
+        depth,
+        num_streams = 1,
+        init = 0.
+    ):
+        super().__init__()
+        self.depth = depth
+        self.num_streams = num_streams
+
+        bias = float(init) * torch.arange(depth + 1, dtype = torch.float32)
+        self.bias = nn.Parameter(repeat(bias, 'l -> s l', s = num_streams).contiguous())
+
+    def forward(self, num_context_hiddens):
+        num_layers = num_context_hiddens // self.num_streams
+
+        layer_indices = repeat(torch.arange(num_layers, device = self.bias.device), 'l -> (l s)', s = self.num_streams)
+        ages = ((num_layers - 1) - layer_indices).clamp(max = self.depth)
+
+        stream_indices = repeat(torch.arange(self.num_streams, device = self.bias.device), 's -> (l s)', l = num_layers)
+
+        return self.bias[stream_indices, ages]
 
 # attention residual
 
@@ -34,6 +62,7 @@ class AttentionResidual(Module):
         norm_fn: Module | None = None,
         use_rmsnorm = False,
         activation = nn.SiLU(),
+        rel_pos_bias: Module | None = None,
     ):
         super().__init__()
         self.scale = dim ** -0.5
@@ -43,6 +72,7 @@ class AttentionResidual(Module):
 
         self.norm = norm_fn(dim)
         self.to_keys = norm_fn(dim)
+        self.rel_pos_bias = rel_pos_bias
 
         self.to_query = nn.Sequential(
             norm_fn(dim),
@@ -66,6 +96,11 @@ class AttentionResidual(Module):
             query = rearrange(query, '... d -> ... 1 d')
 
         sim = einsum(query, keys, '... s d, ... j d -> ... s j') * self.scale
+
+        if exists(self.rel_pos_bias):
+            num_context_hiddens = context.shape[-2]
+            sim = einx.add('... s j, j -> ... s j', sim, self.rel_pos_bias(num_context_hiddens))
+
         attn = sim.softmax(dim = -1)
         out = einsum(attn, context, '... s j, ... j d -> ... s d')
 
@@ -80,6 +115,10 @@ class AttnResidualNormedMLP(Module):
     """
     residual normed mlp, with residual connections replaced by attention-aggregated
     residuals over all layer hiddens, each layer output added onto its input first
+
+    the attention is shared across layers and carries a learned relative position
+    bias, indexed from the most recent hidden into the past, with one learned row
+    for each stream
 
     with `num_streams` greater than 1, the input is projected to that many streams
     before being flattened and combined at the output projection
@@ -102,11 +141,19 @@ class AttnResidualNormedMLP(Module):
         lora_rank = 16,
         loops = 1,
         num_streams = 1,
+        relative_bias = True,
+        relative_bias_init = 0.,
     ):
         super().__init__()
 
         self.loops = loops
         self.num_streams = num_streams
+
+        self.rel_pos_bias = RelativePositionBias(
+            depth = depth * loops,
+            num_streams = num_streams,
+            init = relative_bias_init
+        ) if relative_bias else None
 
         self.proj_in = nn.Linear(dim_in, dim * num_streams) if exists(dim_in) else Identity()
         self.proj_out = nn.Linear(dim * num_streams, dim_out) if exists(dim_out) else Identity()
@@ -127,7 +174,8 @@ class AttnResidualNormedMLP(Module):
                 dim,
                 lora_rank = lora_rank,
                 norm_fn = norm_fn,
-                activation = activation
+                activation = activation,
+                rel_pos_bias = self.rel_pos_bias
             )
 
             self.layers.append(ModuleList([layer, attn_residual]))
