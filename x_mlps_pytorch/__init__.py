@@ -33,7 +33,10 @@ from x_mlps_pytorch.residual_normed_mlp import (
     ResidualNormedMLP
 )
 
+from x_mlps_pytorch.lora import LoRA
+
 from x_mlps_pytorch.attn_residual_normed_mlp import (
+    AttentionResidual,
     AttnResidualNormedMLP
 )
 

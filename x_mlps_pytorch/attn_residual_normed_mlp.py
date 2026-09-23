@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import torch
-from torch import nn, cat, stack, einsum, Tensor
+from torch import nn, cat, stack, Tensor
 from torch.nn import Module, ModuleList, Identity
 
-from einops import repeat, pack, unpack
+from einops import einsum, rearrange
 
 from x_mlps_pytorch.norms import RMSNorm, LayerNorm
+from x_mlps_pytorch.lora import LoRA
 
 # functions
 
@@ -16,37 +17,60 @@ def exists(v):
 def default(v, d):
     return v if exists(v) else d
 
-# lightweight attention for pooling
+# attention residual
 
-class AttentionPool(Module):
+class AttentionResidual(Module):
+    """
+    attention over all preceding hiddens, with the query conditioned on the latest hidden
+    through a low-rank residual, which starts as identity
+
+    https://arxiv.org/abs/2603.15031
+    """
+
     def __init__(
         self,
         dim,
+        lora_rank = 16,
+        norm_fn: Module | None = None,
+        use_rmsnorm = False,
+        activation = nn.SiLU(),
     ):
         super().__init__()
         self.scale = dim ** -0.5
-        self.query = nn.Parameter(torch.randn(dim) * 1e-2)
 
-        self.to_q = nn.Sequential(
-            RMSNorm(dim),
-            nn.Linear(dim, dim, bias = False)
+        if not exists(norm_fn):
+            norm_fn = RMSNorm if use_rmsnorm else LayerNorm
+
+        self.norm = norm_fn(dim)
+        self.to_keys = norm_fn(dim)
+
+        self.to_query = nn.Sequential(
+            norm_fn(dim),
+            LoRA(dim, rank = lora_rank, activation = activation)
         )
 
-        self.q_norm = RMSNorm(dim)
-        self.k_norm = RMSNorm(dim)
+    def forward(
+        self,
+        context: list[Tensor] | Tensor,
+        query: Tensor
+    ):
+        if isinstance(context, (list, tuple)):
+            context = stack(context, dim = -2)
 
-    def forward(self, context):
-        batch = context.shape[0]
+        query = self.norm(query + self.to_query(query))
+        keys = self.to_keys(context)
 
-        q = repeat(self.query, 'd -> b d', b = batch)
-        q = self.to_q(q)
-        q = self.q_norm(q)
+        is_multi_query = query.ndim == context.ndim
 
-        k = self.k_norm(context)
+        if not is_multi_query:
+            query = rearrange(query, '... d -> ... 1 d')
 
-        sim = einsum('b d, b j d -> b j', q, k) * self.scale
+        sim = einsum(query, keys, '... s d, ... j d -> ... s j') * self.scale
         attn = sim.softmax(dim = -1)
-        out = einsum('b j, b j d -> b d', attn, context)
+        out = einsum(attn, context, '... s j, ... j d -> ... s d')
+
+        if not is_multi_query:
+            out = rearrange(out, '... 1 d -> ... d')
 
         return out
 
@@ -54,8 +78,11 @@ class AttentionPool(Module):
 
 class AttnResidualNormedMLP(Module):
     """
-    ResidualNormedMLP variant where residual connections are replaced
-    by attention-aggregated residuals over all layer hiddens.
+    residual normed mlp, with residual connections replaced by attention-aggregated
+    residuals over all layer hiddens, each layer output added onto its input first
+
+    with `num_streams` greater than 1, the input is projected to that many streams
+    before being flattened and combined at the output projection
 
     https://arxiv.org/abs/2601.21582
     https://arxiv.org/abs/2603.15031
@@ -72,11 +99,17 @@ class AttnResidualNormedMLP(Module):
         norm_fn: Module | None = None,
         use_rmsnorm = False,
         final_norm = True,
+        lora_rank = 16,
+        loops = 1,
+        num_streams = 1,
     ):
         super().__init__()
 
-        self.proj_in = nn.Linear(dim_in, dim) if exists(dim_in) else Identity()
-        self.proj_out = nn.Linear(dim, dim_out) if exists(dim_out) else Identity()
+        self.loops = loops
+        self.num_streams = num_streams
+
+        self.proj_in = nn.Linear(dim_in, dim * num_streams) if exists(dim_in) else Identity()
+        self.proj_out = nn.Linear(dim * num_streams, dim_out) if exists(dim_out) else Identity()
 
         if not exists(norm_fn):
             norm_fn = RMSNorm if use_rmsnorm else LayerNorm
@@ -90,35 +123,55 @@ class AttnResidualNormedMLP(Module):
                 activation,
             )
 
-            attn_residual = AttentionPool(dim)
+            attn_residual = AttentionResidual(
+                dim,
+                lora_rank = lora_rank,
+                norm_fn = norm_fn,
+                activation = activation
+            )
 
             self.layers.append(ModuleList([layer, attn_residual]))
 
         self.final_norm = norm_fn(dim) if final_norm else Identity()
 
-    def forward(self, x):
+    def forward(
+        self,
+        x,
+        loops: int | None = None,
+        hiddens: list[Tensor] | None = None,
+        return_hiddens: bool = False,
+    ):
 
         if isinstance(x, (list, tuple)):
             x = cat(x, dim = -1)
 
         x = self.proj_in(x)
+        x = rearrange(x, '... (s d) -> ... s d', s = self.num_streams)
 
-        hiddens = [x]
+        if not exists(hiddens):
+            hiddens = [x]
+        else:
+            hiddens = list(hiddens)
 
-        for layer, attn_residual in self.layers:
-            out = layer(x)
-            hiddens.append(out)
+        num_loops = default(loops, self.loops)
+        assert num_loops >= 1
 
-            stacked = stack(hiddens, dim = -2)
-            stacked, ps = pack([stacked], '* l d')
+        for _ in range(num_loops):
+            for layer, attn_residual in self.layers:
+                out = layer(x) + x
+                hiddens.append(out)
 
-            x = attn_residual(stacked)
+                context = rearrange(stack(hiddens, dim = -3), '... l s d -> ... (l s) d')
+                x = attn_residual(context, query = out)
 
-            x, = unpack(x, ps, '* d')
+        out = self.final_norm(x)
+        out = rearrange(out, '... s d -> ... (s d)')
+        out = self.proj_out(out)
 
-        x = self.final_norm(x)
+        if not return_hiddens:
+            return out
 
-        return self.proj_out(x)
+        return out, hiddens
 
 # quick test
 
