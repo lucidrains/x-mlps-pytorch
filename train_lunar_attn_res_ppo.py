@@ -10,7 +10,7 @@
 #   "numpy",
 #   "matplotlib",
 #   "tqdm",
-#   "mean-conc-beta>=0.1.5",
+#   "mean-conc-beta==0.2.0",
 #   "fire"
 # ]
 #
