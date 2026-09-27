@@ -1,5 +1,7 @@
 import pytest
 import torch
+from torch import nn
+
 param = pytest.mark.parametrize
 
 def test_mlp():
@@ -116,6 +118,57 @@ def test_residual_normed_mlp(
     x = torch.randn(7, 3, 77)
 
     assert mlp(x).shape == (7, 3, 64)
+
+@param('film', (False, True))
+@param('shallow_cond_encoder', (False, True))
+def test_residual_normed_mlp_with_film(
+    film,
+    shallow_cond_encoder
+):
+    from x_mlps_pytorch.residual_normed_mlp import ResidualNormedMLP
+
+    cond_dim = 32
+
+    cond_encoder = ResidualNormedMLP(cond_dim, depth = 4, residual_every = 2, dim_in = 19, dim_out = cond_dim) if shallow_cond_encoder else None
+
+    mlp = ResidualNormedMLP(
+        256,
+        depth = 16,
+        residual_every = 4,
+        dim_in = 77,
+        head = nn.Linear(256, 64),
+        film = film,
+        cond_dim = cond_dim,
+        cond_encoder = cond_encoder
+    )
+
+    x = torch.randn(7, 3, 77)
+    cond = torch.randn(7, 19 if shallow_cond_encoder else cond_dim)
+
+    assert mlp(x, cond).shape == (7, 3, 64)
+
+def test_residual_normed_mlp_identity_head():
+    from x_mlps_pytorch.residual_normed_mlp import ResidualNormedMLP
+
+    mlp = ResidualNormedMLP(
+        256,
+        depth = 16,
+        residual_every = 4,
+        dim_in = 77,
+        head = nn.Identity()
+    )
+
+    x = torch.randn(7, 3, 77)
+
+    embeddings = []
+    hook = mlp.final_norm.register_forward_hook(lambda _, __, output: embeddings.append(output))
+
+    out = mlp(x)
+    hook.remove()
+
+    assert isinstance(mlp.proj_out, nn.Identity)
+    assert out.shape == (7, 3, 256)
+    assert torch.equal(out, embeddings[0])
 
 def test_mlp_list_tensor_input():
     from x_mlps_pytorch.mlp import MLP

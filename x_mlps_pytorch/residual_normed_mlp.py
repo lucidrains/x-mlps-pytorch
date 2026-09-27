@@ -9,6 +9,7 @@ from torch.nn import Module, ModuleList, Identity
 
 from x_mlps_pytorch.norms import RMSNorm, LayerNorm
 from x_mlps_pytorch.normed_mlp import create_mlp as create_normed_mlp
+from x_mlps_pytorch.film import FiLM
 
 # functions
 
@@ -72,17 +73,22 @@ class ResidualNormedMLP(Module):
         use_orthogonal_residual = False,
         orthogonal_residual_double_precision = True,
         keel_post_ln = False,       # use the keel post-norm architecture proposed by Chen et al. from Bytedance - https://arxiv.org/abs/2601.19895
-        keel_residual_scale = None  # defaults to number of blocks, for scaling the residual besides the first
+        keel_residual_scale = None, # defaults to number of blocks, for scaling the residual besides the first
+        film = False,
+        cond_dim = None,
+        cond_encoder: Module | None = None,
+        head: Module | None = None
     ):
         super().__init__()
         assert not (keel_post_ln and skip_to_output)
+        assert not (exists(head) and exists(dim_out)), 'either `dim_out` or `head`, not both'
 
         assert divisible_by(depth, residual_every), '`depth` must be divisible by `residual_every`'
 
         # proj in and out
 
         self.proj_in = nn.Linear(dim_in, dim) if exists(dim_in) else Identity()
-        self.proj_out = nn.Linear(dim, dim_out) if exists(dim_out) else Identity()
+        self.proj_out = head if exists(head) else (nn.Linear(dim, dim_out) if exists(dim_out) else Identity())
 
         # layers
 
@@ -112,6 +118,9 @@ class ResidualNormedMLP(Module):
 
         self.layers = ModuleList(layers)
 
+        self.cond_encoder = cond_encoder if film else None
+        self.films = ModuleList([FiLM(dim, cond_dim = cond_dim) for _ in range(num_blocks)]) if film else None
+
         self.post_norms = ModuleList([norm_fn(dim) for _ in range(num_blocks - 1)]) if keel_post_ln else None
 
         self.keel_residual_scale = default(keel_residual_scale, num_blocks)
@@ -129,7 +138,8 @@ class ResidualNormedMLP(Module):
 
     def forward(
         self,
-        x
+        x,
+        cond = None
     ):
         skip_to_output = self.skip_to_output
 
@@ -137,6 +147,12 @@ class ResidualNormedMLP(Module):
             x = cat(x, dim = -1)
 
         x = self.proj_in(x)
+
+        if exists(self.films):
+            assert exists(cond), 'condition must be passed in when film is enabled'
+
+            if exists(self.cond_encoder):
+                cond = self.cond_encoder(cond)
 
         layer_outs = []
 
@@ -146,6 +162,9 @@ class ResidualNormedMLP(Module):
             residual = x
 
             out = layer(x)
+
+            if exists(self.films):
+                out = self.films[layer_index](out, cond)
 
             # skip to output - auto compression paper
 

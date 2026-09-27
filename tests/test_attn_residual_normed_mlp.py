@@ -26,6 +26,58 @@ def test_attn_residual_normed_mlp(num_streams):
     assert mlp(x).shape == (7, 3, 64)
 
 @param('num_streams', (1, 2, 3))
+@param('film', (False, True))
+@param('shallow_cond_encoder', (False, True))
+def test_attn_residual_normed_mlp_with_film(
+    num_streams,
+    film,
+    shallow_cond_encoder
+):
+    cond_dim = 32
+
+    cond_encoder = AttnResidualNormedMLP(dim = cond_dim, depth = 2, dim_in = 19, dim_out = cond_dim, lora_rank = 8) if shallow_cond_encoder else None
+
+    mlp = AttnResidualNormedMLP(
+        dim = 32,
+        depth = 4,
+        dim_in = 8,
+        head = nn.Linear(32 * num_streams, 16),
+        lora_rank = 8,
+        num_streams = num_streams,
+        film = film,
+        cond_dim = cond_dim,
+        cond_encoder = cond_encoder
+    )
+
+    x = torch.randn(5, 8)
+    cond = torch.randn(5, 19 if shallow_cond_encoder else cond_dim)
+
+    assert mlp(x, cond = cond).shape == (5, 16)
+
+@param('num_streams', (1, 2, 3))
+def test_attn_residual_normed_mlp_identity_head(num_streams):
+    mlp = AttnResidualNormedMLP(
+        dim = 32,
+        depth = 4,
+        dim_in = 8,
+        lora_rank = 8,
+        num_streams = num_streams,
+        head = nn.Identity()
+    )
+
+    x = torch.randn(5, 8)
+
+    embeddings = []
+    hook = mlp.final_norm.register_forward_hook(lambda _, __, output: embeddings.append(output))
+
+    out = mlp(x)
+    hook.remove()
+
+    assert isinstance(mlp.proj_out, nn.Identity)
+    assert out.shape == (5, 32 * num_streams)
+    assert torch.equal(out, embeddings[0].flatten(start_dim = 1))
+
+@param('num_streams', (1, 2, 3))
 def test_attn_residual_normed_mlp_backward(num_streams):
     mlp = AttnResidualNormedMLP(dim = 128, dim_in = 128, depth = 2, lora_rank = 16, num_streams = num_streams)
 

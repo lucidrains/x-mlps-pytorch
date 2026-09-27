@@ -9,6 +9,7 @@ from einops import einsum, rearrange, repeat
 
 from x_mlps_pytorch.norms import RMSNorm, LayerNorm
 from x_mlps_pytorch.lora import LoRA
+from x_mlps_pytorch.film import FiLM
 
 # functions
 
@@ -143,8 +144,14 @@ class AttnResidualNormedMLP(Module):
         num_streams = 1,
         relative_bias = True,
         relative_bias_init = 0.,
+        film = False,
+        cond_dim = None,
+        cond_encoder: Module | None = None,
+        head: Module | None = None
     ):
         super().__init__()
+
+        assert not (exists(head) and exists(dim_out)), 'either `dim_out` or `head`, not both'
 
         self.loops = loops
         self.num_streams = num_streams
@@ -156,7 +163,7 @@ class AttnResidualNormedMLP(Module):
         ) if relative_bias else None
 
         self.proj_in = nn.Linear(dim_in, dim * num_streams) if exists(dim_in) else Identity()
-        self.proj_out = nn.Linear(dim * num_streams, dim_out) if exists(dim_out) else Identity()
+        self.proj_out = head if exists(head) else (nn.Linear(dim * num_streams, dim_out) if exists(dim_out) else Identity())
 
         if not exists(norm_fn):
             norm_fn = RMSNorm if use_rmsnorm else LayerNorm
@@ -180,6 +187,9 @@ class AttnResidualNormedMLP(Module):
 
             self.layers.append(ModuleList([layer, attn_residual]))
 
+        self.cond_encoder = cond_encoder if film else None
+        self.films = ModuleList([FiLM(dim, cond_dim = cond_dim) for _ in range(depth)]) if film else None
+
         self.final_norm = norm_fn(dim) if final_norm else Identity()
 
     def forward(
@@ -188,6 +198,8 @@ class AttnResidualNormedMLP(Module):
         loops: int | None = None,
         hiddens: list[Tensor] | None = None,
         return_hiddens: bool = False,
+        *,
+        cond = None
     ):
 
         if isinstance(x, (list, tuple)):
@@ -195,6 +207,12 @@ class AttnResidualNormedMLP(Module):
 
         x = self.proj_in(x)
         x = rearrange(x, '... (s d) -> ... s d', s = self.num_streams)
+
+        if exists(self.films):
+            assert exists(cond), 'condition must be passed in when film is enabled'
+
+            if exists(self.cond_encoder):
+                cond = self.cond_encoder(cond)
 
         if not exists(hiddens):
             hiddens = [x]
@@ -205,8 +223,12 @@ class AttnResidualNormedMLP(Module):
         assert num_loops >= 1
 
         for _ in range(num_loops):
-            for layer, attn_residual in self.layers:
+            for layer_index, (layer, attn_residual) in enumerate(self.layers):
                 out = layer(x) + x
+
+                if exists(self.films):
+                    out = self.films[layer_index](out, cond)
+
                 hiddens.append(out)
 
                 context = rearrange(stack(hiddens, dim = -3), '... l s d -> ... (l s) d')
