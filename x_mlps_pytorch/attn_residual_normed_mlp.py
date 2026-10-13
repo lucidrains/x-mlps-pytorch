@@ -53,6 +53,12 @@ class AttentionResidual(Module):
     attention over all preceding hiddens, with the query conditioned on the latest hidden
     through a low-rank residual, which starts as identity
 
+    aggregation over the preceding hiddens is softmax, or sigmoid when `sigmoid` is set at
+    init, in which case every hidden is aggregated, rather than competing through a softmax
+
+    with `has_streams` set, the query is expected to carry a stream dimension,
+    each stream attending on its own
+
     https://arxiv.org/abs/2603.15031
     """
 
@@ -64,9 +70,13 @@ class AttentionResidual(Module):
         use_rmsnorm = False,
         activation = nn.SiLU(),
         rel_pos_bias: Module | None = None,
+        has_streams = False,
+        sigmoid = False,
     ):
         super().__init__()
         self.scale = dim ** -0.5
+        self.has_streams = has_streams
+        self.sigmoid = sigmoid
 
         if not exists(norm_fn):
             norm_fn = RMSNorm if use_rmsnorm else LayerNorm
@@ -88,13 +98,14 @@ class AttentionResidual(Module):
         if isinstance(context, (list, tuple)):
             context = stack(context, dim = -2)
 
-        query = self.norm(query + self.to_query(query))
-        keys = self.to_keys(context)
+        # stream dimension of 1 is added when the query does not carry streams, and removed at the end
 
-        is_multi_query = query.ndim == context.ndim
-
-        if not is_multi_query:
+        if not self.has_streams:
             query = rearrange(query, '... d -> ... 1 d')
+
+        query = self.norm(query + self.to_query(query))
+
+        keys = self.to_keys(context)
 
         sim = einsum(query, keys, '... s d, ... j d -> ... s j') * self.scale
 
@@ -102,10 +113,11 @@ class AttentionResidual(Module):
             num_context_hiddens = context.shape[-2]
             sim = einx.add('... s j, j -> ... s j', sim, self.rel_pos_bias(num_context_hiddens))
 
-        attn = sim.softmax(dim = -1)
+        attn = sim.sigmoid() if self.sigmoid else sim.softmax(dim = -1)
+
         out = einsum(attn, context, '... s j, ... j d -> ... s d')
 
-        if not is_multi_query:
+        if not self.has_streams:
             out = rearrange(out, '... 1 d -> ... d')
 
         return out
@@ -124,6 +136,10 @@ class AttnResidualNormedMLP(Module):
     with `num_streams` greater than 1, the input is projected to that many streams
     before being flattened and combined at the output projection
 
+    the aggregation over the preceding hiddens is softmax, and with `final_layer_sigmoid`
+    set to True, the final attention residual aggregates through the sigmoid alone, summing
+    all accrued hiddens, in the spirit of auto compressing networks
+
     https://arxiv.org/abs/2601.21582
     https://arxiv.org/abs/2603.15031
     """
@@ -139,6 +155,7 @@ class AttnResidualNormedMLP(Module):
         norm_fn: Module | None = None,
         use_rmsnorm = False,
         final_norm = True,
+        final_layer_sigmoid = True,
         lora_rank = 16,
         loops = 1,
         num_streams = 1,
@@ -155,6 +172,7 @@ class AttnResidualNormedMLP(Module):
 
         self.loops = loops
         self.num_streams = num_streams
+        self.has_streams = num_streams > 1
 
         self.rel_pos_bias = RelativePositionBias(
             depth = depth * loops,
@@ -170,19 +188,25 @@ class AttnResidualNormedMLP(Module):
 
         self.layers = ModuleList([])
 
-        for _ in range(depth):
+        for layer_index in range(depth):
             layer = nn.Sequential(
                 nn.Linear(dim, dim, bias = bias),
                 norm_fn(dim),
                 activation,
             )
 
+            # the final attention residual aggregates through the sigmoid alone, summing all hiddens - https://openreview.net/forum?id=eIDa6pd9iQ
+
+            is_final_layer = final_layer_sigmoid and layer_index == depth - 1
+
             attn_residual = AttentionResidual(
                 dim,
                 lora_rank = lora_rank,
                 norm_fn = norm_fn,
                 activation = activation,
-                rel_pos_bias = self.rel_pos_bias
+                rel_pos_bias = self.rel_pos_bias,
+                has_streams = self.has_streams,
+                sigmoid = is_final_layer
             )
 
             self.layers.append(ModuleList([layer, attn_residual]))
@@ -206,7 +230,9 @@ class AttnResidualNormedMLP(Module):
             x = cat(x, dim = -1)
 
         x = self.proj_in(x)
-        x = rearrange(x, '... (s d) -> ... s d', s = self.num_streams)
+
+        if self.has_streams:
+            x = rearrange(x, '... (s d) -> ... s d', s = self.num_streams)
 
         if exists(self.films):
             assert exists(cond), 'condition must be passed in when film is enabled'
@@ -231,11 +257,18 @@ class AttnResidualNormedMLP(Module):
 
                 hiddens.append(out)
 
-                context = rearrange(stack(hiddens, dim = -3), '... l s d -> ... (l s) d')
+                context = stack(hiddens, dim = -3 if self.has_streams else -2)
+
+                if self.has_streams:
+                    context = rearrange(context, '... l s d -> ... (l s) d')
+
                 x = attn_residual(context, query = out)
 
         out = self.final_norm(x)
-        out = rearrange(out, '... s d -> ... (s d)')
+
+        if self.has_streams:
+            out = rearrange(out, '... s d -> ... (s d)')
+
         out = self.proj_out(out)
 
         if not return_hiddens:

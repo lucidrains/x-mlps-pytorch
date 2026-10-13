@@ -103,16 +103,6 @@ values = critic(state) # (1,)
 ```
 
 ```bibtex
-@inproceedings{dorovatas2025autocompressing,
-    title  = {Auto-Compressing Networks},
-    author = {Vaggelis Dorovatas and Georgios Paraskevopoulos and Alexandros Potamianos},
-    booktitle = {The Thirty-ninth Annual Conference on Neural Information Processing Systems},
-    year    = {2025},
-    url     = {https://openreview.net/forum?id=eIDa6pd9iQ}
-}
-```
-
-```bibtex
 @inproceedings{Lin2025ContinualLV,
     title    = {Continual Learning via Sparse Memory Finetuning},
     author   = {Jessy Lin and Luke S. Zettlemoyer and Gargi Ghosh and Wen-tau Yih and Aram H. Markosyan and Vincent-Pierre Berges and Barlas Ouguz},
@@ -148,5 +138,15 @@ values = critic(state) # (1,)
     doi       = {10.1109/TPAMI.2023.3329173},
     issn      = {1939-3539},
     url       = {https://doi.org/10.1109/TPAMI.2023.3329173}
+}
+```
+
+```bibtex
+@inproceedings{dorovatas2025autocompressing,
+    title  = {Auto-Compressing Networks},
+    author = {Vaggelis Dorovatas and Georgios Paraskevopoulos and Alexandros Potamianos},
+    booktitle = {The Thirty-ninth Annual Conference on Neural Information Processing Systems},
+    year    = {2025},
+    url     = {https://openreview.net/forum?id=eIDa6pd9iQ}
 }
 ```

@@ -105,9 +105,11 @@ def test_attn_residual_normed_mlp_streams(num_streams):
     x = torch.randn(5, 8)
     out, hiddens = mlp(x, return_hiddens = True)
 
+    expected_hidden_shape = (5, num_streams, 32) if num_streams > 1 else (5, 32)
+
     assert mlp.proj_in.out_features == 32 * num_streams
     assert out.shape == (5, 16)
-    assert all(hidden.shape == (5, num_streams, 32) for hidden in hiddens)
+    assert all(hidden.shape == expected_hidden_shape for hidden in hiddens)
 
 @param('num_streams', (1, 2, 3))
 def test_attn_residual_normed_mlp_loops(num_streams):
@@ -132,7 +134,8 @@ def test_attn_residual_normed_mlp_external_hiddens(num_streams):
     mlp = AttnResidualNormedMLP(dim = 16, dim_in = 16, dim_out = 16, depth = 2, lora_rank = 4, num_streams = num_streams)
 
     x = torch.randn(2, 16)
-    hiddens = [torch.randn(2, num_streams, 16) for _ in range(2)]
+    hidden_shape = (2, num_streams, 16) if num_streams > 1 else (2, 16)
+    hiddens = [torch.randn(*hidden_shape) for _ in range(2)]
     out, accumulated = mlp(x, hiddens = hiddens, return_hiddens = True)
 
     assert out.shape == (2, 16)
@@ -159,13 +162,38 @@ def test_attn_residual_custom_query_activation():
 
     assert isinstance(attn_residual.to_query[1].activation, nn.Identity)
 
-def test_attention_residual_multiple_queries():
-    attn_residual = AttentionResidual(dim = 32, lora_rank = 8, use_rmsnorm = True)
+@param('sigmoid', (False, True))
+@param('has_streams', (False, True))
+def test_attention_residual(sigmoid, has_streams):
+    attn_residual = AttentionResidual(dim = 32, lora_rank = 8, use_rmsnorm = True, has_streams = has_streams, sigmoid = sigmoid)
 
     context = torch.randn(3, 5, 32)
-    query = torch.randn(3, 2, 32)
+    query = torch.randn(3, 2, 32) if has_streams else torch.randn(3, 32)
 
-    assert attn_residual(context, query = query).shape == (3, 2, 32)
+    out = attn_residual(context, query = query)
+    out.sum().backward()
+
+    assert out.shape == query.shape
+
+@param('num_streams', (1, 2))
+@param('final_layer_sigmoid', (False, True))
+def test_attn_residual_normed_mlp_e2e(num_streams, final_layer_sigmoid):
+    mlp = AttnResidualNormedMLP(
+        dim = 32,
+        depth = 4,
+        dim_in = 8,
+        dim_out = 16,
+        lora_rank = 4,
+        num_streams = num_streams,
+        final_layer_sigmoid = final_layer_sigmoid,
+    )
+
+    x = torch.randn(5, 8)
+
+    out = mlp(x)
+    out.sum().backward()
+
+    assert out.shape == (5, 16)
 
 def test_attn_residual_normed_mlp_lora_rank_fallback():
     mlp = AttnResidualNormedMLP(dim = 8, depth = 2, lora_rank = 16)
