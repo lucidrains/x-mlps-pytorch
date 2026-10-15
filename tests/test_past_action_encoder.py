@@ -2,99 +2,44 @@ import pytest
 import torch
 import torch.nn.functional as F
 
+from x_mlps_pytorch import (
+    ContinuousPastActions,
+    DiscretePastActions
+)
+
 param = pytest.mark.parametrize
 
-def one_hot(actions, num_actions):
-    return F.one_hot(actions.long(), num_actions).float()
+@param('discrete', (False, True))
+def test_past_actions(discrete):
+    num_actions, dim_out = 2, 8
+    actions = torch.tensor([1, 0])
 
-def test_past_action_encoder_none():
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
+    if discrete:
+        encoder = DiscretePastActions(num_actions, dim_out)
+    else:
+        encoder = ContinuousPastActions(num_actions, dim_out)
+        actions = F.one_hot(actions, num_actions).float()
 
-    encoder = PastActionEncoder(2)
+    # nothing passed — the reserved embedding row, or zeros with the presence flag off
 
-    out = encoder(None)
+    assert encoder(None).shape == (dim_out,)
 
-    assert out.shape == (3,)
-    assert torch.equal(out, torch.tensor([0., 0., 0.]))
+    # explicitly passed — a plain bool is the same as all present
 
-def test_past_action_encoder_present():
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
+    all_present = encoder(actions)
 
-    encoder = PastActionEncoder(2)
+    assert all_present.shape == (2, dim_out)
+    assert torch.equal(all_present, encoder(actions, has_past_actions = True))
 
-    actions = one_hot(torch.tensor([1, 0]), 2)
-    out = encoder(actions)
+    # a mixed batch — the mask is applied to the passed action itself,
+    # so the sample without a past action falls back to the absent encoding
 
-    assert out.shape == (2, 3)
-    assert torch.equal(out[:, :2], actions)
-    assert torch.equal(out[:, -1], torch.ones(2))
+    mixed = encoder(actions, has_past_actions = torch.tensor([True, False]))
 
-def test_past_action_encoder_no_presence_flag():
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
+    assert torch.equal(mixed[0], all_present[0])
+    assert torch.equal(mixed[1], encoder(None, has_past_actions = torch.tensor([False]))[0])
 
-    encoder = PastActionEncoder(2, presence_flag = False)
+    # gradients reach every parameter
 
-    assert encoder(None).shape == (2,)
-    assert encoder(one_hot(torch.tensor([0, 1]), 2)).shape == (2, 2)
-
-def test_past_action_encoder_mixed_batch():
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
-
-    encoder = PastActionEncoder(2)
-
-    actions = one_hot(torch.tensor([1, 0]), 2)
-    has_past_actions = torch.tensor([True, False])
-
-    out = encoder(actions, has_past_actions = has_past_actions)
-
-    assert torch.equal(out[0], torch.tensor([0., 1., 1.]))
-    assert torch.equal(out[1], torch.tensor([0., 0., 0.]))
-
-def test_past_action_encoder_none_with_mask_batch():
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
-
-    encoder = PastActionEncoder(2)
-
-    has_past_actions = torch.tensor([False, False])
-    out = encoder(None, has_past_actions = has_past_actions)
-
-    assert out.shape == (2, 3)
-    assert (out == 0.).all()
-
-def test_past_action_encoder_present_bool():
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
-
-    encoder = PastActionEncoder(2)
-
-    actions = one_hot(torch.tensor([0, 1]), 2)
-
-    # a plain bool is fine — none passed is the same as nothing being present
-
-    assert torch.equal(encoder(None), encoder(None, has_past_actions = False))
-    assert torch.equal(encoder(actions), encoder(actions, has_past_actions = True))
-    assert torch.equal(encoder(None, has_past_actions = False), encoder(None, has_past_actions = torch.tensor(False)))
-
-@param('depth', (0, 2))
-def test_past_action_encoder_proj(depth):
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
-
-    encoder = PastActionEncoder(4, dim_out = 8, depth = depth)
-
-    assert encoder(None).shape == (8,)
-    assert encoder(torch.randn(5, 4)).shape == (5, 8)
-
-def test_past_action_encoder_gradients():
-    from x_mlps_pytorch.past_action_encoder import PastActionEncoder
-    from x_mlps_pytorch import PastActionEncoder as exported
-
-    assert exported is PastActionEncoder
-
-    encoder = PastActionEncoder(2, dim_out = 4)
-
-    actions = one_hot(torch.tensor([1, 0]), 2)
-    has_past_actions = torch.tensor([True, False])
-
-    encoder(actions, has_past_actions = has_past_actions).sum().backward()
-
-    for param in encoder.parameters():
-        assert param.grad is not None
+    mixed.sum().backward()
+    assert all(p.grad is not None for p in encoder.parameters())

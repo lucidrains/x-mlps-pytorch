@@ -64,5 +64,6 @@ from x_mlps_pytorch.weight_only_ff import (
 )
 
 from x_mlps_pytorch.past_action_encoder import (
-    PastActionEncoder
+    ContinuousPastActions,
+    DiscretePastActions
 )
