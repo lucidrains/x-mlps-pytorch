@@ -62,3 +62,7 @@ from x_mlps_pytorch.weight_only_ff import (
     WeightOnlyFeedforward,
     WeightOnlyFeedforwards
 )
+
+from x_mlps_pytorch.past_action_encoder import (
+    PastActionEncoder
+)
