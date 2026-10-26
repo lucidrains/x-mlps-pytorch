@@ -150,3 +150,23 @@ values = critic(state) # (1,)
     url     = {https://openreview.net/forum?id=eIDa6pd9iQ}
 }
 ```
+
+```bibtex
+@inproceedings{saied2026normalization,
+    title     = {Normalization Equivariance for Arbitrary Backbones, with Application to Image Denoising},
+    author    = {Youssef Saied and Fran{\c{c}}ois Fleuret},
+    booktitle = {International Conference on Machine Learning},
+    year      = {2026},
+    url       = {https://arxiv.org/abs/2605.08193}
+}
+```
+
+```bibtex
+@inproceedings{kim2022reversible,
+    title     = {Reversible Instance Normalization for Accurate Time-Series Forecasting against Distribution Shift},
+    author    = {Taesung Kim and Jinhee Kim and Yunwon Tae and Cheonbok Park and Jang-Ho Choi and Jaegul Choo},
+    booktitle = {International Conference on Learning Representations},
+    year      = {2022},
+    url       = {https://openreview.net/forum?id=cGDAkQo1C0p}
+}
+```
