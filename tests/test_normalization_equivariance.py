@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from x_mlps_pytorch import (
@@ -6,6 +7,8 @@ from x_mlps_pytorch import (
     layernorm,
     rmsnorm
 )
+
+param = pytest.mark.parametrize
 
 
 def test_rmsnorm_is_scale_invariant():
@@ -64,6 +67,19 @@ def test_layernorm_returns_inverse():
     x_norm, inverse = layernorm(x, return_inverse = True)
 
     assert torch.allclose(inverse(x_norm), x, atol = 1e-5)
+
+
+@param('norm', (rmsnorm, RMSNorm, layernorm, LayerNorm))
+def test_return_stats(norm):
+    x = torch.randn(2, 5, 8)
+
+    norm = norm(8) if isinstance(norm, type) else norm
+    out, inverse, stats = norm(x, return_inverse = True, return_stats = True)
+
+    reconstructed = out * stats if torch.is_tensor(stats) else out * stats[1] + stats[0]
+
+    assert torch.allclose(inverse(out), x, atol = 1e-5)
+    assert torch.allclose(reconstructed, x, atol = 1e-5)
 
 
 def test_modules_return_inverse():

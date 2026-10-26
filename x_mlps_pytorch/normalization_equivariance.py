@@ -17,37 +17,55 @@ def rmsnorm(
     x,
     dim = -1,
     eps = 1e-6,
-    return_inverse = False
+    return_inverse = False,
+    return_stats = False
 ):
     rms = x.pow(2).mean(dim = dim, keepdim = True).add(eps).sqrt()
     out = x / rms
 
-    if not return_inverse:
-        return out
-
     def inverse(out):
         return out * rms
 
-    return out, inverse
+    if not return_inverse and not return_stats:
+        return out
+
+    ret = (out,)
+
+    if return_inverse:
+        ret = (*ret, inverse)
+
+    if return_stats:
+        ret = (*ret, rms)
+
+    return ret
 
 
 def layernorm(
     x,
     dim = -1,
     eps = 1e-6,
-    return_inverse = False
+    return_inverse = False,
+    return_stats = False
 ):
-    mean = x.mean(dim = dim, keepdim = True)
+    mu = x.mean(dim = dim, keepdim = True)
     std = x.var(dim = dim, keepdim = True, unbiased = False).add(eps).sqrt()
-    out = (x - mean) / std
-
-    if not return_inverse:
-        return out
+    out = (x - mu) / std
 
     def inverse(out):
-        return out * std + mean
+        return out * std + mu
 
-    return out, inverse
+    if not return_inverse and not return_stats:
+        return out
+
+    ret = (out,)
+
+    if return_inverse:
+        ret = (*ret, inverse)
+
+    if return_stats:
+        ret = (*ret, (mu, std))
+
+    return ret
 
 # modules
 
@@ -65,18 +83,30 @@ class RMSNorm(Module):
     def forward(
         self,
         x,
-        return_inverse = False
+        return_inverse = False,
+        return_stats = False
     ):
         weight = self.weight
 
-        out, inverse = rmsnorm(x, eps = self.eps, return_inverse = True)
+        out, inverse, rms = rmsnorm(x, eps = self.eps, return_inverse = True, return_stats = True)
 
         if exists(weight):
             out = out * weight
             base_inverse = inverse
             inverse = lambda out: base_inverse(out / weight)
 
-        return (out, inverse) if return_inverse else out
+        if not return_inverse and not return_stats:
+            return out
+
+        ret = (out,)
+
+        if return_inverse:
+            ret = (*ret, inverse)
+
+        if return_stats:
+            ret = (*ret, rms)
+
+        return ret
 
 
 class LayerNorm(Module):
@@ -93,18 +123,30 @@ class LayerNorm(Module):
     def forward(
         self,
         x,
-        return_inverse = False
+        return_inverse = False,
+        return_stats = False
     ):
         weight = self.weight
 
-        out, inverse = layernorm(x, eps = self.eps, return_inverse = True)
+        out, inverse, (mu, std) = layernorm(x, eps = self.eps, return_inverse = True, return_stats = True)
 
         if exists(weight):
             out = out * weight
             base_inverse = inverse
             inverse = lambda out: base_inverse(out / weight)
 
-        return (out, inverse) if return_inverse else out
+        if not return_inverse and not return_stats:
+            return out
+
+        ret = (out,)
+
+        if return_inverse:
+            ret = (*ret, inverse)
+
+        if return_stats:
+            ret = (*ret, (mu, std))
+
+        return ret
 
 
 if __name__ == '__main__':
