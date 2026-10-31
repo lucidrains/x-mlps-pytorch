@@ -3,6 +3,10 @@ from x_mlps_pytorch.mlp import (
     create_mlp
 )
 
+from x_mlps_pytorch.linear import (
+    GroupedLinear
+)
+
 from x_mlps_pytorch.ff import (
     Feedforwards
 )
