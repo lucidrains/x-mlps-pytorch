@@ -3,6 +3,10 @@ from x_mlps_pytorch.mlp import (
     create_mlp
 )
 
+from x_mlps_pytorch.mimo_mlp import (
+    MimoMLP
+)
+
 from x_mlps_pytorch.linear import (
     GroupedLinear
 )
