@@ -11,7 +11,7 @@ def test_grouped_ff_one_group():
     assert ff(x).shape == x.shape
 
 
-def test_grouped_ff_one_group():
+def test_grouped_ff_two_groups():
     from x_mlps_pytorch.grouped_nff import nGroupedFeedforwards
 
     ff = nGroupedFeedforwards(256, 4, dim_in = 128, dim_out = 128, squeeze_if_one_group = True, groups = 2)
